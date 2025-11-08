@@ -19,7 +19,7 @@ Then I should see "SelectorPass" extension listed
 And the extension should be enabled
 And the extension icon should appear in the toolbar
 ```
-- [x] Test completed
+- [ ] Test completed
 
 ---
 
@@ -28,10 +28,10 @@ And the extension icon should appear in the toolbar
 Given the SelectorPass extension is installed
 When I click the extension icon in the toolbar
 Then the popup should open
-And I should see "No configuration found for this domain." message
-And I should see "Settings" button
+And I should see "No domains configured" message
+And I should see "Configure Domain" button
 ```
-- [x] Test completed
+- [ ] Test completed
 
 ---
 
@@ -40,35 +40,9 @@ And I should see "Settings" button
 ### Scenario: Configure new domain via popup
 ```gherkin
 Given I have the extension popup open
-When I click "Settings" button
+When I click "Configure Domain" button
 Then the options page should open
 And I should see the domain configuration form
-```
-- [x] Test completed
-
----
-
-### Scenario: Domain auto-populates from current tab
-```gherkin
-Given I am on "chrisawmichaeldev.github.io" website
-When I click the extension icon
-And I click "Settings" button
-Then the options page should open
-And the domain field should be pre-filled with "chrisawmichaeldev.github.io"
-```
-- [ ] Test completed
-
----
-
-### Scenario: Domain does not auto-populate when already configured
-```gherkin
-Given I have "chrisawmichaeldev.github.io" already configured
-And I am on "chrisawmichaeldev.github.io" website
-When I click the extension icon
-And I click "Settings" button
-Then the options page should open
-And the domain field should be empty
-And I should see the existing domain in the domains list
 ```
 - [ ] Test completed
 
@@ -199,26 +173,13 @@ And the new order should persist after page refresh
 
 ## Feature: Auto-Sort Recent Functionality
 
-### Scenario: Auto-sort recent is enabled by default
-```gherkin
-Given I am configuring a new domain "chrisawmichaeldev.github.io"
-When I view the domain configuration form
-Then the "Auto-sort recent" checkbox should be checked by default
-When I save the domain
-Then the auto-sort setting should be enabled
-```
-- [ ] Test completed
-
----
-
-### Scenario: Disable auto-sort recent for manual ordering
+### Scenario: Enable auto-sort recent for domain
 ```gherkin
 Given I have domain "chrisawmichaeldev.github.io" configured
-When I uncheck the "Auto-sort recent" checkbox for that domain
+When I check the "Auto-sort recent" checkbox for that domain
 And I click "Save Domain" button
-Then the checkbox should remain unchecked
-And the setting should be disabled
-And credentials should maintain manual order when used
+Then the checkbox should remain checked
+And the setting should be saved
 ```
 - [ ] Test completed
 
@@ -241,7 +202,6 @@ And the order should be: "user3", "user1", "user2"
 ## Feature: Form Filling on Demo Page
 
 ### Scenario: Fill form with single credential
-- [ ] Test completed
 ```gherkin
 Given I have configured "chrisawmichaeldev.github.io" with selectors "#username" and "#password"
 And I have one credential "demouser" / "demopass"
@@ -253,9 +213,11 @@ Then the username field should contain "demouser"
 And the password field should contain "demopass"
 And I should see "Form filled successfully!" message
 ```
+- [ ] Test completed
+
+---
 
 ### Scenario: Choose between multiple credentials
-- [ ] Test completed
 ```gherkin
 Given I have three credentials for "chrisawmichaeldev.github.io"
 When I navigate to the demo page
@@ -265,9 +227,11 @@ And each should have a "Fill" button
 When I click "Fill" for the second credential
 Then the form should be filled with that credential's data
 ```
+- [ ] Test completed
+
+---
 
 ### Scenario: Form filling with invalid selectors
-- [ ] Test completed
 ```gherkin
 Given I have domain configured with invalid selectors
 And I have a credential for that domain
@@ -276,13 +240,13 @@ And I try to fill the form
 Then I should see an error message
 And the form fields should remain empty
 ```
+- [ ] Test completed
 
 ---
 
 ## Feature: Collapsible Sections
 
 ### Scenario: Collapse and expand domain sections
-- [ ] Test completed
 ```gherkin
 Given I have a domain with credentials configured
 And the domain section is expanded
@@ -293,21 +257,23 @@ When I click the domain header again
 Then the credentials section should expand
 And the arrow should point down
 ```
+- [ ] Test completed
+
+---
 
 ### Scenario: Section state persists
-- [ ] Test completed
 ```gherkin
 Given I have collapsed a domain section
 When I refresh the options page
 Then the domain section should remain collapsed
 ```
+- [ ] Test completed
 
 ---
 
 ## Feature: Domain Deletion
 
 ### Scenario: Delete domain with confirmation
-- [ ] Test completed
 ```gherkin
 Given I have domain "example.com" configured with credentials
 When I click "Delete Domain" button
@@ -317,9 +283,11 @@ Then the domain should be removed completely
 And all its credentials should be deleted
 And I should see "Domain deleted!" message
 ```
+- [ ] Test completed
+
+---
 
 ### Scenario: Cancel domain deletion
-- [ ] Test completed
 ```gherkin
 Given I have a domain configured
 When I click "Delete Domain" button
@@ -327,13 +295,13 @@ And I click "Cancel" in the confirmation dialog
 Then the domain should remain in the list
 And all credentials should be preserved
 ```
+- [ ] Test completed
 
 ---
 
 ## Feature: Error Handling and Edge Cases
 
 ### Scenario: Handle empty domain name
-- [ ] Test completed
 ```gherkin
 Given I am on the options page
 When I leave the domain field empty
@@ -342,20 +310,23 @@ And I click "Save Domain" button
 Then I should see an error message
 And the domain should not be saved
 ```
+- [ ] Test completed
+
+---
 
 ### Scenario: Handle duplicate domain
-- [ ] Test completed
 ```gherkin
-Given I have domain "test.com" already configured with credentials
-When I try to add another domain "test.com" with different selectors
+Given I have domain "test.com" already configured
+When I try to add another domain "test.com"
 And I click "Save Domain" button
-Then the existing domain should be updated with new selectors
+Then the existing domain should be updated
 And no duplicate should be created
-And all existing credentials should be preserved
 ```
+- [ ] Test completed
+
+---
 
 ### Scenario: Handle empty credential fields
-- [ ] Test completed
 ```gherkin
 Given I have a domain configured
 When I click "Add Credential" button
@@ -364,22 +335,24 @@ And I click "Save Credential" button
 Then I should see an error message
 And the credential should not be saved
 ```
+- [ ] Test completed
+
+---
 
 ### Scenario: Extension works on non-configured domain
-- [ ] Test completed
 ```gherkin
 Given I navigate to a website not in my configured domains
 When I click the extension icon
-Then I should see "No configuration found for this domain." message
-And I should see "Settings" button
+Then I should see "Domain not configured" message
+And I should see "Configure Domain" button
 ```
+- [ ] Test completed
 
 ---
 
 ## Feature: Data Persistence
 
 ### Scenario: Data persists after browser restart
-- [ ] Test completed
 ```gherkin
 Given I have configured domains and credentials
 When I close and restart Chrome browser
@@ -388,9 +361,11 @@ Then all my domains should still be listed
 And all credentials should be preserved
 And all settings should be maintained
 ```
+- [ ] Test completed
+
+---
 
 ### Scenario: Data persists after extension disable/enable
-- [ ] Test completed
 ```gherkin
 Given I have configured data
 When I disable the extension in chrome://extensions/
@@ -398,13 +373,13 @@ And I enable it again
 Then all data should be preserved
 And functionality should work normally
 ```
+- [ ] Test completed
 
 ---
 
 ## Feature: Keyboard Accessibility
 
 ### Scenario: Navigate options page with keyboard
-- [ ] Test completed
 ```gherkin
 Given I am on the options page
 When I use Tab key to navigate
@@ -412,22 +387,24 @@ Then I should be able to reach all interactive elements
 And focus indicators should be visible
 And Enter key should activate buttons
 ```
+- [ ] Test completed
+
+---
 
 ### Scenario: Navigate popup with keyboard
-- [ ] Test completed
 ```gherkin
 Given I have the popup open with credentials
 When I use Tab key to navigate
 Then I should be able to reach all Fill buttons
 And Enter key should fill the form
 ```
+- [ ] Test completed
 
 ---
 
 ## Performance Tests
 
 ### Scenario: Handle large number of credentials
-- [ ] Test completed
 ```gherkin
 Given I have 50 credentials for a single domain
 When I open the options page
@@ -435,12 +412,15 @@ Then the page should load within 2 seconds
 And scrolling should be smooth
 And all operations should remain responsive
 ```
+- [ ] Test completed
+
+---
 
 ### Scenario: Handle multiple domains
-- [ ] Test completed
 ```gherkin
 Given I have 20 different domains configured
 When I open the extension popup
 Then it should load quickly
 And domain detection should work correctly
 ```
+- [ ] Test completed
