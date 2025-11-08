@@ -2,6 +2,10 @@
 
 **Precision password manager Chrome extension with CSS selector targeting and local-only storage**
 
+## Demo
+
+[**Test page for extension →**](https://chrisawmichaeldev.github.io/selectorpass/demo.html) *(requires extension installed)*
+
 ## Features
 
 - **Domain-specific configuration**: Set CSS selectors once per domain
