@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>SelectorPass</h1>
+      <button id="settingsBtn" class="settings-btn">⚙️</button>
+    </div>
+    
+    <div id="noConfig" class="message">
+      <p>No configuration found for this domain.</p>
+    </div>
+    
+    <div id="credentialsList" class="credentials-list" style="display: none;">
+      <div class="domain-info">
+        <span id="currentDomain"></span>
+      </div>
+      <div id="credentials"></div>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

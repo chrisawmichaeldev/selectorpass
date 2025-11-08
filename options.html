@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SelectorPass Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-content">
+        <img src="icons/icon48.png" alt="SelectorPass" class="header-icon">
+        <div class="header-text">
+          <h1>SelectorPass</h1>
+          <p class="header-subtitle">Precision password manager with CSS selector targeting</p>
+        </div>
+        <button id="buy-coffee" class="buy-coffee-btn">
+          ☕ Buy Me a Coffee (£2.50)
+        </button>
+      </div>
+    </header>
+    
+    <div class="section collapsible">
+      <h2 class="collapsible-header" id="addDomainHeader">
+        <span class="expand-icon">▶</span>
+        Add Domain
+      </h2>
+      <div class="collapsible-content" id="addDomainContent">
+        <div>
+          <div class="form-group">
+            <label>Domain:</label>
+            <input type="text" id="domainInput" placeholder="example.com">
+          </div>
+          <div class="form-group">
+            <label>Username Selector:</label>
+            <input type="text" id="usernameSelector" placeholder="#username">
+          </div>
+          <div class="form-group">
+            <label>Password Selector:</label>
+            <input type="text" id="passwordSelector" placeholder="#password">
+          </div>
+          <button id="saveDomainBtn">Save Domain</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section collapsible expanded">
+      <h2 class="collapsible-header" id="manageDomainsHeader">
+        <span class="expand-icon">▶</span>
+        Manage Domains
+      </h2>
+      <div class="collapsible-content" id="manageDomainsContent">
+        <div>
+          <div id="domainsList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <dialog id="confirmDialog" class="confirm-dialog">
+    <div class="dialog-content">
+      <h3 class="dialog-title">Confirm Action</h3>
+      <p class="dialog-message"></p>
+      <div class="dialog-buttons">
+        <button class="dialog-btn cancel-btn" id="dialogCancel">Cancel</button>
+        <button class="dialog-btn confirm-btn" id="dialogConfirm">Delete</button>
+      </div>
+    </div>
+  </dialog>
+  
+  <script src="options.js"></script>
+</body>
+</html>
