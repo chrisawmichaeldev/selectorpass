@@ -41,7 +41,7 @@ SelectorPass is designed with privacy as a core principle:
 
 ## Contact
 
-For privacy concerns, please open an issue on the GitHub repository or contact the developer through GitHub.
+For privacy concerns, please open an issue on the [GitHub repository](https://github.com/chrisawmichaeldev/selectorpass) or contact the developer through GitHub.
 
 ## Changes to This Policy
 

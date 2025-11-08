@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Precision password manager with CSS selector targeting and local-only storage",
   "author": "Christopher Michael",
-  "homepage_url": "https://github.com/christophermichael/selectorpass",
+  "homepage_url": "https://github.com/chrisawmichaeldev/selectorpass",
   "permissions": [
     "storage",
     "activeTab"
