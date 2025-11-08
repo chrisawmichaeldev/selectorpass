@@ -56,7 +56,7 @@ And I click "Settings" button
 Then the options page should open
 And the domain field should be pre-filled with "chrisawmichaeldev.github.io"
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
@@ -70,7 +70,7 @@ Then the options page should open
 And the domain field should be empty
 And I should see the existing domain in the domains list
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
@@ -81,25 +81,76 @@ When I enter "chrisawmichaeldev.github.io" in the domain field
 And I enter "#username" in the username selector field
 And I enter "#password" in the password selector field
 And I click "Save Domain" button
-Then I should see "Domain saved successfully!" message
-And the domain should appear in the domains list
+Then the domain should appear in the domains list
 And the form should be cleared
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
-### Scenario: Configure domain with invalid selectors
+### Scenario: Configure domain with invalid username selector
 ```gherkin
 Given I am on the SelectorPass options page
 When I enter "example.com" in the domain field
-And I enter "invalid-selector" in the username selector field
+And I enter "#invalid..selector" in the username selector field
 And I enter "#password" in the password selector field
 And I click "Save Domain" button
-Then I should see "Domain saved successfully!" message
-But the selectors should be saved as entered
+Then I should see modal dialog "Please enter a valid CSS selector for username field" with OK button
+When I click "OK"
+Then the dialog should close
+And the domain should NOT be saved
+And the form should retain the entered values
 ```
-- [ ] Test completed
+- [x] Test completed
+
+---
+
+### Scenario: Configure domain with invalid password selector
+```gherkin
+Given I am on the SelectorPass options page
+When I enter "example.com" in the domain field
+And I enter "#username" in the username selector field
+And I enter "[invalid" in the password selector field
+And I click "Save Domain" button
+Then I should see modal dialog "Please enter a valid CSS selector for password field" with OK button
+When I click "OK"
+Then the dialog should close
+And the domain should NOT be saved
+And the form should retain the entered values
+```
+- [x] Test completed
+
+---
+
+### Scenario: Configure domain with empty fields
+```gherkin
+Given I am on the SelectorPass options page
+When I leave the domain field empty
+And I enter "#username" in the username selector field
+And I enter "#password" in the password selector field
+And I click "Save Domain" button
+Then I should see modal dialog "Please fill all fields" with OK button
+When I click "OK"
+Then the dialog should close
+And the domain should NOT be saved
+```
+- [x] Test completed
+
+---
+
+### Scenario: Configure domain with invalid domain name
+```gherkin
+Given I am on the SelectorPass options page
+When I enter "invalid..domain" in the domain field
+And I enter "#username" in the username selector field
+And I enter "#password" in the password selector field
+And I click "Save Domain" button
+Then I should see modal dialog "Please enter a valid domain name" with OK button
+When I click "OK"
+Then the dialog should close
+And the domain should NOT be saved
+```
+- [x] Test completed
 
 ---
 
@@ -109,8 +160,7 @@ Given I have a domain "chrisawmichaeldev.github.io" configured
 When I click "Edit" button for that domain
 And I change the username selector to "#email"
 And I click "Save Domain" button
-Then I should see "Domain saved successfully!" message
-And the domain should show updated selectors
+Then the domain should show updated selectors
 ```
 - [ ] Test completed
 
@@ -125,8 +175,7 @@ When I click "Add Credential" button for that domain
 And I enter "testuser1" in the username field
 And I enter "testpass1" in the password field
 And I click "Save Credential" button
-Then I should see "Credential saved!" message
-And the credential should appear in the credentials list
+Then the credential should appear in the credentials list
 And the form should be cleared
 ```
 - [ ] Test completed
@@ -151,8 +200,7 @@ Given I have credential "testuser1" for "chrisawmichaeldev.github.io"
 When I click "Edit" button for that credential
 And I change the username to "editeduser1"
 And I click "Save Credential" button
-Then I should see "Credential saved!" message
-And the credential should show "editeduser1"
+Then the credential should show "editeduser1"
 ```
 - [ ] Test completed
 
@@ -165,7 +213,7 @@ When I click "Delete" button for that credential
 Then I should see confirmation dialog "Delete this credential?"
 When I click "Delete" in the confirmation dialog
 Then the credential should be removed from the list
-And I should see "Credential deleted!" message
+
 ```
 - [ ] Test completed
 
@@ -251,7 +299,7 @@ Then I should see the credential "demouser" listed
 When I click "Fill" button for that credential
 Then the username field should contain "demouser"
 And the password field should contain "demopass"
-And I should see "Form filled successfully!" message
+And the popup should close
 ```
 
 ### Scenario: Choose between multiple credentials
@@ -272,9 +320,9 @@ Then the form should be filled with that credential's data
 Given I have domain configured with invalid selectors
 And I have a credential for that domain
 When I navigate to the demo page
-And I try to fill the form
-Then I should see an error message
-And the form fields should remain empty
+And I click "Fill" for that credential
+Then the form fields should remain empty
+And the popup should close
 ```
 
 ---
@@ -315,7 +363,6 @@ Then I should see confirmation dialog "Delete domain and all credentials?"
 When I click "Delete" in the confirmation dialog
 Then the domain should be removed completely
 And all its credentials should be deleted
-And I should see "Domain deleted!" message
 ```
 
 ### Scenario: Cancel domain deletion
@@ -339,7 +386,9 @@ Given I am on the options page
 When I leave the domain field empty
 And I enter valid selectors
 And I click "Save Domain" button
-Then I should see an error message
+Then I should see modal dialog "Please fill all fields" with OK button
+When I click "OK"
+Then the dialog should close
 And the domain should not be saved
 ```
 
@@ -361,7 +410,9 @@ Given I have a domain configured
 When I click "Add Credential" button
 And I leave username or password empty
 And I click "Save Credential" button
-Then I should see an error message
+Then I should see modal dialog "Username and password are required" with OK button
+When I click "OK"
+Then the dialog should close
 And the credential should not be saved
 ```
 

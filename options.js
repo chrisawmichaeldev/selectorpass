@@ -373,22 +373,22 @@ async function saveDomain() {
     
     // Validate inputs
     if (!domain || !usernameSelector || !passwordSelector) {
-      showConfirmDialog('Please fill all fields', () => {});
+      showAlertDialog('Please fill all fields');
       return;
     }
     
     if (!isValidDomain(domain)) {
-      showConfirmDialog('Please enter a valid domain name', () => {});
+      showAlertDialog('Please enter a valid domain name');
       return;
     }
     
     if (!isValidSelector(usernameSelector)) {
-      showConfirmDialog('Please enter a valid CSS selector for username field', () => {});
+      showAlertDialog('Please enter a valid CSS selector for username field');
       return;
     }
     
     if (!isValidSelector(passwordSelector)) {
-      showConfirmDialog('Please enter a valid CSS selector for password field', () => {});
+      showAlertDialog('Please enter a valid CSS selector for password field');
       return;
     }
     
@@ -829,13 +829,13 @@ async function addCredential(domain) {
   const password = passwordInput.value.trim();
   
   if (!username || !password) {
-    showConfirmDialog('Please fill username and password', () => {});
+    showAlertDialog('Username and password are required');
     return;
   }
   
   // Basic validation
   if (username.length > 100 || password.length > 100) {
-    showConfirmDialog('Username and password must be less than 100 characters', () => {});
+    showAlertDialog('Username and password must be less than 100 characters');
     return;
   }
   
@@ -871,6 +871,48 @@ async function addCredential(domain) {
   }
 }
 
+function showAlertDialog(message) {
+  try {
+    const dialog = document.getElementById('confirmDialog');
+    const messageEl = dialog?.querySelector('.dialog-message');
+    const confirmBtn = document.getElementById('dialogConfirm');
+    const cancelBtn = document.getElementById('dialogCancel');
+    
+    if (!dialog || !messageEl || !confirmBtn || !cancelBtn) {
+      console.error('SelectorPass: Dialog elements not found');
+      return;
+    }
+    
+    messageEl.textContent = message;
+    
+    // Hide cancel button for alert messages
+    cancelBtn.style.display = 'none';
+    confirmBtn.textContent = 'OK';
+    
+    const handleOK = () => {
+      try {
+        dialog.close();
+        cleanup();
+      } catch (error) {
+        console.error('SelectorPass: Error in dialog OK handler:', error);
+      }
+    };
+    
+    const cleanup = () => {
+      confirmBtn.removeEventListener('click', handleOK);
+      // Reset button states
+      cancelBtn.style.display = 'inline-block';
+      confirmBtn.textContent = 'Delete';
+    };
+    
+    confirmBtn.addEventListener('click', handleOK);
+    
+    dialog.showModal();
+  } catch (error) {
+    console.error('SelectorPass: Error showing error dialog:', error);
+  }
+}
+
 function showConfirmDialog(message, onConfirm) {
   try {
     const dialog = document.getElementById('confirmDialog');
@@ -884,6 +926,10 @@ function showConfirmDialog(message, onConfirm) {
     }
     
     messageEl.textContent = message;
+    
+    // Show both buttons for confirmations
+    cancelBtn.style.display = 'inline-block';
+    confirmBtn.textContent = 'Delete';
     
     const handleConfirm = () => {
       try {
@@ -909,7 +955,6 @@ function showConfirmDialog(message, onConfirm) {
       cancelBtn.removeEventListener('click', handleCancel);
     };
     
-    // amazonq-ignore-next-line
     confirmBtn.addEventListener('click', handleConfirm);
     cancelBtn.addEventListener('click', handleCancel);
     
@@ -1013,24 +1058,24 @@ async function saveDomainEdit(oldDomain) {
     const autoSortRecent = autoSortCheckbox.checked;
     
     if (!newDomain || !newUsernameSelector || !newPasswordSelector) {
-      showConfirmDialog('All fields are required', () => {});
+      showAlertDialog('All fields are required');
       return;
     }
     
     if (!isValidDomain(newDomain)) {
-      showConfirmDialog('Please enter a valid domain name', () => {});
+      showAlertDialog('Please enter a valid domain name');
       return;
     }
     
     if (!isValidSelector(newUsernameSelector) || !isValidSelector(newPasswordSelector)) {
-      showConfirmDialog('Please enter valid CSS selectors', () => {});
+      showAlertDialog('Please enter valid CSS selectors');
       return;
     }
     
     const domains = await loadData();
     
     if (newDomain !== oldDomain && domains[newDomain]) {
-      showConfirmDialog('Domain already exists', () => {});
+      showAlertDialog('Domain already exists');
       return;
     }
     
@@ -1148,12 +1193,12 @@ async function saveCredential(domain, index) {
     const newPassword = passwordInput.value.trim();
     
     if (!newUsername || !newPassword) {
-      showConfirmDialog('Username and password are required', () => {});
+      showAlertDialog('Username and password are required');
       return;
     }
     
     if (newUsername.length > 100 || newPassword.length > 100) {
-      showConfirmDialog('Username and password must be less than 100 characters', () => {});
+      showAlertDialog('Username and password must be less than 100 characters');
       return;
     }
     
