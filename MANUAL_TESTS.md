@@ -159,10 +159,10 @@ And the domain should NOT be saved
 Given I have a domain "chrisawmichaeldev.github.io" configured
 When I click "Edit" button for that domain
 And I change the username selector to "#email"
-And I click "Save Domain" button
+And I click "Save" button
 Then the domain should show updated selectors
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
@@ -171,26 +171,25 @@ Then the domain should show updated selectors
 ### Scenario: Add first credential to domain
 ```gherkin
 Given I have domain "chrisawmichaeldev.github.io" configured
-When I click "Add Credential" button for that domain
-And I enter "testuser1" in the username field
+When I enter "testuser1" in the username field
 And I enter "testpass1" in the password field
-And I click "Save Credential" button
+And I click "Add" button
 Then the credential should appear in the credentials list
 And the form should be cleared
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
 ### Scenario: Add multiple credentials to same domain
 ```gherkin
 Given I have one credential for "chrisawmichaeldev.github.io"
-When I add a second credential with username "testuser2" and password "testpass2"
-And I add a third credential with username "testuser3" and password "testpass3"
+When I add a second credential with username "testuser2" and password "testuser2"
+And I add a third credential with username "testuser3" and password "testuser3"
 Then I should see all three credentials listed
 And each should have Edit and Delete buttons
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
@@ -202,7 +201,7 @@ And I change the username to "editeduser1"
 And I click "Save Credential" button
 Then the credential should show "editeduser1"
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
@@ -215,7 +214,7 @@ When I click "Delete" in the confirmation dialog
 Then the credential should be removed from the list
 
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
@@ -227,7 +226,7 @@ And I click "Cancel" in the confirmation dialog
 Then the credential should remain in the list
 And no success message should appear
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
@@ -241,7 +240,7 @@ When I drag "user3" credential above "user1"
 Then the order should change to: "user3", "user1", "user2"
 And the new order should persist after page refresh
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
@@ -250,25 +249,25 @@ And the new order should persist after page refresh
 ### Scenario: Auto-sort recent is enabled by default
 ```gherkin
 Given I am configuring a new domain "chrisawmichaeldev.github.io"
-When I view the domain configuration form
-Then the "Auto-sort recent" checkbox should be checked by default
+When I enter the domain name and selectors
+Then the "Auto-sort recent" checkbox underneath the password selector should be checked by default
 When I save the domain
 Then the auto-sort setting should be enabled
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
 ### Scenario: Disable auto-sort recent for manual ordering
 ```gherkin
 Given I have domain "chrisawmichaeldev.github.io" configured
-When I uncheck the "Auto-sort recent" checkbox for that domain
+When I edit the domain and uncheck the "Auto-sort recent" checkbox underneath the password selector
 And I click "Save Domain" button
 Then the checkbox should remain unchecked
 And the setting should be disabled
 And credentials should maintain manual order when used
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
@@ -282,14 +281,13 @@ And I return to the options page
 Then "user3" should now be at the top of the list
 And the order should be: "user3", "user1", "user2"
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ---
 
 ## Feature: Form Filling on Demo Page
 
 ### Scenario: Fill form with single credential
-- [ ] Test completed
 ```gherkin
 Given I have configured "chrisawmichaeldev.github.io" with selectors "#username" and "#password"
 And I have one credential "demouser" / "demopass"
@@ -301,9 +299,9 @@ Then the username field should contain "demouser"
 And the password field should contain "demopass"
 And the popup should close
 ```
+- [x] Test completed
 
 ### Scenario: Choose between multiple credentials
-- [ ] Test completed
 ```gherkin
 Given I have three credentials for "chrisawmichaeldev.github.io"
 When I navigate to the demo page
@@ -313,9 +311,9 @@ And each should have a "Fill" button
 When I click "Fill" for the second credential
 Then the form should be filled with that credential's data
 ```
+- [x] Test completed
 
 ### Scenario: Form filling with invalid selectors
-- [ ] Test completed
 ```gherkin
 Given I have domain configured with invalid selectors
 And I have a credential for that domain
@@ -324,13 +322,13 @@ And I click "Fill" for that credential
 Then the form fields should remain empty
 And the popup should close
 ```
+- [x] Test completed
 
 ---
 
 ## Feature: Collapsible Sections
 
 ### Scenario: Collapse and expand domain sections
-- [ ] Test completed
 ```gherkin
 Given I have a domain with credentials configured
 And the domain section is expanded
@@ -341,21 +339,21 @@ When I click the domain header again
 Then the credentials section should expand
 And the arrow should point down
 ```
+- [x] Test completed
 
 ### Scenario: Section state persists
-- [ ] Test completed
 ```gherkin
 Given I have collapsed a domain section
 When I refresh the options page
 Then the domain section should remain collapsed
 ```
+- [x] Test completed
 
 ---
 
 ## Feature: Domain Deletion
 
 ### Scenario: Delete domain with confirmation
-- [ ] Test completed
 ```gherkin
 Given I have domain "example.com" configured with credentials
 When I click "Delete Domain" button
@@ -364,9 +362,9 @@ When I click "Delete" in the confirmation dialog
 Then the domain should be removed completely
 And all its credentials should be deleted
 ```
+- [x] Test completed
 
 ### Scenario: Cancel domain deletion
-- [ ] Test completed
 ```gherkin
 Given I have a domain configured
 When I click "Delete Domain" button
@@ -374,13 +372,13 @@ And I click "Cancel" in the confirmation dialog
 Then the domain should remain in the list
 And all credentials should be preserved
 ```
+- [x] Test completed
 
 ---
 
 ## Feature: Error Handling and Edge Cases
 
 ### Scenario: Handle empty domain name
-- [ ] Test completed
 ```gherkin
 Given I am on the options page
 When I leave the domain field empty
@@ -391,9 +389,9 @@ When I click "OK"
 Then the dialog should close
 And the domain should not be saved
 ```
+- [x] Test completed
 
 ### Scenario: Handle duplicate domain
-- [ ] Test completed
 ```gherkin
 Given I have domain "test.com" already configured with credentials
 When I try to add another domain "test.com" with different selectors
@@ -402,35 +400,34 @@ Then the existing domain should be updated with new selectors
 And no duplicate should be created
 And all existing credentials should be preserved
 ```
+- [x] Test completed
 
 ### Scenario: Handle empty credential fields
-- [ ] Test completed
 ```gherkin
 Given I have a domain configured
-When I click "Add Credential" button
-And I leave username or password empty
-And I click "Save Credential" button
+When I leave username or password empty
+And I click "Add" button
 Then I should see modal dialog "Username and password are required" with OK button
 When I click "OK"
 Then the dialog should close
 And the credential should not be saved
 ```
+- [x] Test completed
 
 ### Scenario: Extension works on non-configured domain
-- [ ] Test completed
 ```gherkin
 Given I navigate to a website not in my configured domains
 When I click the extension icon
 Then I should see "No configuration found for this domain." message
 And I should see "Settings" button
 ```
+- [x] Test completed
 
 ---
 
 ## Feature: Data Persistence
 
 ### Scenario: Data persists after browser restart
-- [ ] Test completed
 ```gherkin
 Given I have configured domains and credentials
 When I close and restart Chrome browser
@@ -439,9 +436,9 @@ Then all my domains should still be listed
 And all credentials should be preserved
 And all settings should be maintained
 ```
+- [x] Test completed
 
 ### Scenario: Data persists after extension disable/enable
-- [ ] Test completed
 ```gherkin
 Given I have configured data
 When I disable the extension in chrome://extensions/
@@ -449,13 +446,13 @@ And I enable it again
 Then all data should be preserved
 And functionality should work normally
 ```
+- [x] Test completed
 
 ---
 
 ## Feature: Keyboard Accessibility
 
 ### Scenario: Navigate options page with keyboard
-- [ ] Test completed
 ```gherkin
 Given I am on the options page
 When I use Tab key to navigate
@@ -463,22 +460,22 @@ Then I should be able to reach all interactive elements
 And focus indicators should be visible
 And Enter key should activate buttons
 ```
+- [x] Test completed
 
 ### Scenario: Navigate popup with keyboard
-- [ ] Test completed
 ```gherkin
 Given I have the popup open with credentials
 When I use Tab key to navigate
 Then I should be able to reach all Fill buttons
 And Enter key should fill the form
 ```
+- [x] Test completed
 
 ---
 
 ## Performance Tests
 
 ### Scenario: Handle large number of credentials
-- [ ] Test completed
 ```gherkin
 Given I have 50 credentials for a single domain
 When I open the options page
@@ -486,12 +483,13 @@ Then the page should load within 2 seconds
 And scrolling should be smooth
 And all operations should remain responsive
 ```
+- [ ] Test completed
 
 ### Scenario: Handle multiple domains
-- [ ] Test completed
 ```gherkin
 Given I have 20 different domains configured
 When I open the extension popup
 Then it should load quickly
 And domain detection should work correctly
 ```
+- [ ] Test completed

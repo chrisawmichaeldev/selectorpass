@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupSettingsButton();
     
   } catch (error) {
-    console.error('SelectorPass: Error initializing popup:', error);
     // Show error message to user
     showErrorMessage('Failed to load SelectorPass. Please try again.');
   }
@@ -61,13 +60,12 @@ function setupSettingsButton() {
             chrome.runtime.openOptionsPage();
           }
         } catch (error) {
-          console.error('SelectorPass: Error opening options page:', error);
           chrome.runtime.openOptionsPage(); // Fallback
         }
       });
     }
   } catch (error) {
-    console.error('SelectorPass: Error setting up settings button:', error);
+    // Silent error handling
   }
 }
 
@@ -88,7 +86,6 @@ async function getCurrentDomain() {
     
     return new URL(tab.url).hostname;
   } catch (error) {
-    console.error('SelectorPass: Error getting current domain:', error);
     throw new Error(`Failed to get domain: ${error.message}`);
   }
 }
@@ -102,7 +99,6 @@ async function loadData() {
     const result = await chrome.storage.local.get(['domains']);
     return result.domains || {};
   } catch (error) {
-    console.error('SelectorPass: Error loading data:', error);
     return {};
   }
 }
@@ -115,7 +111,6 @@ async function saveData(domains) {
   try {
     await chrome.storage.local.set({ domains });
   } catch (error) {
-    console.error('SelectorPass: Error saving data:', error);
     // amazonq-ignore-next-line
     throw error;
   }
@@ -136,7 +131,7 @@ function showNoConfigMessage() {
     if (noConfigEl) noConfigEl.style.display = 'block';
     if (credentialsListEl) credentialsListEl.style.display = 'none';
   } catch (error) {
-    console.error('SelectorPass: Error showing no config message:', error);
+    // Silent error handling
   }
 }
 
@@ -163,7 +158,7 @@ function showErrorMessage(message) {
       credentialsListEl.style.display = 'none';
     }
   } catch (error) {
-    console.error('SelectorPass: Error showing error message:', error);
+    // Silent error handling
   }
 }
 
@@ -180,7 +175,6 @@ function showCredentialsList(domain, domainConfig) {
     const container = document.getElementById('credentials');
     
     if (!container) {
-      console.error('SelectorPass: Credentials container not found');
       return;
     }
     
@@ -199,7 +193,7 @@ function showCredentialsList(domain, domainConfig) {
         const credentialElement = createCredentialElement(domain, domainConfig, credential, index);
         container.appendChild(credentialElement);
       } catch (error) {
-        console.error('SelectorPass: Error creating credential element:', error);
+        // Silent error handling
       }
     });
     
@@ -209,7 +203,7 @@ function showCredentialsList(domain, domainConfig) {
       firstFillBtn.focus();
     }
   } catch (error) {
-    console.error('SelectorPass: Error showing credentials list:', error);
+    // Silent error handling
   }
 }
 
@@ -276,28 +270,23 @@ async function fillCredentials(domain, domainConfig, credIndex) {
   try {
     // Validate inputs
     if (!domain || !domainConfig) {
-      console.error('SelectorPass: Invalid domain or config');
       return;
     }
     
     if (!domainConfig.credentials || !Array.isArray(domainConfig.credentials)) {
-      console.error('SelectorPass: Invalid credentials array');
       return;
     }
     
     if (credIndex < 0 || credIndex >= domainConfig.credentials.length) {
-      console.error('SelectorPass: Invalid credential index');
       return;
     }
     
     const credential = domainConfig.credentials[credIndex];
     if (!credential || !credential.username || !credential.password) {
-      console.error('SelectorPass: Invalid credential data');
       return;
     }
     
     if (!domainConfig.usernameSelector || !domainConfig.passwordSelector) {
-      console.error('SelectorPass: Missing selectors in domain config');
       return;
     }
     
@@ -309,8 +298,18 @@ async function fillCredentials(domain, domainConfig, credIndex) {
     // Get current active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.id) {
-      console.error('SelectorPass: No active tab found');
       return;
+    }
+    
+    // Inject content script if needed, then send message
+    try {
+      // Try to inject content script first
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content-script.js']
+      });
+    } catch (injectionError) {
+      // Content script might already be injected, continue
     }
     
     // Send message to content script to fill the form
@@ -324,14 +323,13 @@ async function fillCredentials(domain, domainConfig, credIndex) {
       });
       
       // Close popup after successful filling
-      // amazonq-ignore-next-line
       window.close();
-    // amazonq-ignore-next-line
     } catch (error) {
-      console.error('SelectorPass: Failed to send message to content script:', error);
+      // Show user-friendly error message
+      showErrorMessage('Failed to fill form. Please refresh the page and try again.');
     }
   } catch (error) {
-    console.error('SelectorPass: Error in fillCredentials:', error);
+    // Silent error handling
   }
 }
 
@@ -358,14 +356,12 @@ async function moveCredentialToTop(domain, credIndex) {
     const domains = await loadData();
     
     if (!domains[domain] || !domains[domain].credentials) {
-      console.error('SelectorPass: Invalid domain for credential move');
       return;
     }
     
     const credentials = domains[domain].credentials;
     
     if (credIndex < 0 || credIndex >= credentials.length) {
-      console.error('SelectorPass: Invalid credential index for move');
       return;
     }
     
@@ -378,6 +374,6 @@ async function moveCredentialToTop(domain, credIndex) {
     // Save updated data
     await saveData(domains);
   } catch (error) {
-    console.error('SelectorPass: Error moving credential to top:', error);
+    // Silent error handling
   }
 }

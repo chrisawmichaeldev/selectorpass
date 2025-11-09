@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.body.classList.remove('no-transition');
     }, 50);
   } catch (error) {
-    console.error('SelectorPass: Error initializing options page:', error);
+    // Silent error handling
   }
 });
 
@@ -62,7 +62,7 @@ function handleUrlParameters() {
       chrome.storage.local.set({ addDomainExpanded: true });
     }
   } catch (error) {
-    console.error('SelectorPass: Error handling URL parameters:', error);
+    // Silent error handling
   }
 }
 
@@ -79,7 +79,6 @@ async function loadData() {
     const result = await chrome.storage.local.get(['domains']);
     return result.domains || {};
   } catch (error) {
-    console.error('SelectorPass: Error loading data:', error);
     return {};
   }
 }
@@ -92,7 +91,6 @@ async function saveData(domains) {
   try {
     await chrome.storage.local.set({ domains });
   } catch (error) {
-    console.error('SelectorPass: Error saving data:', error);
     throw error;
   }
 }
@@ -109,8 +107,6 @@ function setupEventListeners() {
     const saveBtn = document.getElementById('saveDomainBtn');
     if (saveBtn) {
       saveBtn.addEventListener('click', saveDomain);
-    } else {
-      console.error('SelectorPass: Save Domain button not found!');
     }
     
     // Setup collapsible sections
@@ -132,12 +128,12 @@ function setupEventListeners() {
           // amazonq-ignore-next-line
           chrome.tabs.create({ url: 'https://buymeacoffee.com/cawmdev' });
         } catch (error) {
-          console.error('SelectorPass: Error opening donation page:', error);
+          // Silent error handling
         }
       });
     }
   } catch (error) {
-    console.error('SelectorPass: Error setting up event listeners:', error);
+    // Silent error handling
   }
 }
 
@@ -153,7 +149,6 @@ async function toggleAddDomainSection() {
     // amazonq-ignore-next-line
     const section = document.querySelector('.collapsible');
     if (!section) {
-      console.error('SelectorPass: Collapsible section not found');
       return;
     }
     
@@ -163,7 +158,7 @@ async function toggleAddDomainSection() {
     const isExpanded = section.classList.contains('expanded');
     await chrome.storage.local.set({ addDomainExpanded: isExpanded });
   } catch (error) {
-    console.error('SelectorPass: Error toggling add domain section:', error);
+    // Silent error handling
   }
 }
 

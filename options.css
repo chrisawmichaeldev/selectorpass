@@ -396,9 +396,14 @@ button:active {
 
 .credential-display {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   width: 100%;
+  gap: 12px;
+}
+
+.credential-display .credential-buttons {
+  margin-left: auto;
 }
 
 .credential-edit {
@@ -418,6 +423,10 @@ button:active {
 .credential-buttons {
   display: flex;
   gap: 6px;
+}
+
+.credential-username {
+  text-align: left;
 }
 
 .cred-username-input {

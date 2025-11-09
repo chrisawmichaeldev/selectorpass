@@ -7,7 +7,8 @@
   "homepage_url": "https://github.com/chrisawmichaeldev/selectorpass",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "https://buymeacoffee.com/*"

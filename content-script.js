@@ -25,7 +25,6 @@
       // Validate input parameters
       // amazonq-ignore-next-line
       if (!usernameSelector || !passwordSelector || !username || !password) {
-        console.error('SelectorPass: Invalid parameters provided');
         return false;
       }
       
@@ -44,8 +43,6 @@
         usernameField.dispatchEvent(new Event('input', { bubbles: true }));
         usernameField.dispatchEvent(new Event('change', { bubbles: true }));
         fieldsFound++;
-      } else {
-        console.warn('SelectorPass: Username field not found:', usernameSelector);
       }
       
       // Fill password field if found
@@ -55,20 +52,11 @@
         passwordField.dispatchEvent(new Event('input', { bubbles: true }));
         passwordField.dispatchEvent(new Event('change', { bubbles: true }));
         fieldsFound++;
-      } else {
-        console.warn('SelectorPass: Password field not found:', passwordSelector);
       }
       
-      if (fieldsFound > 0) {
-        console.log(`SelectorPass: Successfully filled ${fieldsFound} field(s)`);
-        return true;
-      } else {
-        console.error('SelectorPass: No fields found to fill');
-        return false;
-      }
+      return fieldsFound > 0;
       
     } catch (error) {
-      console.error('SelectorPass: Error filling credentials:', error);
       return false;
     }
   }
@@ -83,14 +71,12 @@
     try {
       // Validate message and sender
       if (!message || !sender) {
-        console.warn('SelectorPass: Invalid message or sender');
         sendResponse({ success: false, error: 'Invalid message or sender' });
         return;
       }
       
       // amazonq-ignore-next-line
       if (!sender.id || sender.id !== chrome.runtime.id) {
-        console.warn('SelectorPass: Message from unknown sender');
         sendResponse({ success: false, error: 'Invalid sender' });
         return;
       }
@@ -101,19 +87,16 @@
           const success = fillCredentials(message);
           sendResponse({ success });
         } catch (error) {
-          console.error('SelectorPass: Error filling credentials:', error);
           sendResponse({ success: false, error: 'Failed to fill credentials' });
         }
       } else {
-        console.warn('SelectorPass: Unknown action:', message.action);
         sendResponse({ success: false, error: 'Unknown action' });
       }
     } catch (error) {
-      console.error('SelectorPass: Error handling message:', error);
       try {
         sendResponse({ success: false, error: 'Message handling failed' });
       } catch (responseError) {
-        console.error('SelectorPass: Error sending response:', responseError);
+        // Silent error handling
       }
     }
   }
@@ -132,9 +115,8 @@
       // amazonq-ignore-next-line
       chrome.runtime.onMessage.addListener(handleMessage);
       
-      console.log('SelectorPass: Content script initialized');
     } catch (error) {
-      console.error('SelectorPass: Error initializing content script:', error);
+      // Silent error handling
     }
   }
   
