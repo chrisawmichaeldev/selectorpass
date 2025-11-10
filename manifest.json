@@ -18,13 +18,7 @@
     "default_title": "SelectorPass - Precision Password Manager"
   },
   "options_page": "options.html",
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content-script.js"],
-      "run_at": "document_idle"
-    }
-  ],
+
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
