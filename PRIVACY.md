@@ -1,6 +1,6 @@
 # Privacy Policy for SelectorPass
 
-**Last updated: [Current Date]**
+**Last updated: November 9, 2025**
 
 ## Data Collection and Storage
 

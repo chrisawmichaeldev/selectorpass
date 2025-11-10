@@ -4,6 +4,8 @@
 
 ## Demo
 
+[**📺 Watch Demo Video →**](https://youtu.be/Lw2BCiFpCqY)
+
 [**Test page for extension →**](https://chrisawmichaeldev.github.io/selectorpass/demo.html) *(requires extension installed)*
 
 ## Features

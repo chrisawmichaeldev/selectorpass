@@ -483,7 +483,7 @@ Then the page should load within 2 seconds
 And scrolling should be smooth
 And all operations should remain responsive
 ```
-- [ ] Test completed
+- [x] Test completed
 
 ### Scenario: Handle multiple domains
 ```gherkin
@@ -492,4 +492,4 @@ When I open the extension popup
 Then it should load quickly
 And domain detection should work correctly
 ```
-- [ ] Test completed
+- [x] Test completed
