@@ -23,7 +23,6 @@
   function fillCredentials({ usernameSelector, passwordSelector, username, password }) {
     try {
       // Validate input parameters
-      // amazonq-ignore-next-line
       if (!usernameSelector || !passwordSelector || !username || !password) {
         return false;
       }
@@ -37,9 +36,6 @@
       if (usernameField) {
         usernameField.value = username;
         // Dispatch events to trigger form validation and frameworks
-        // amazonq-ignore-next-line
-        // amazonq-ignore-next-line
-        // amazonq-ignore-next-line
         usernameField.dispatchEvent(new Event('input', { bubbles: true }));
         usernameField.dispatchEvent(new Event('change', { bubbles: true }));
         fieldsFound++;
@@ -75,14 +71,12 @@
         return;
       }
       
-      // amazonq-ignore-next-line
       if (!sender.id || sender.id !== chrome.runtime.id) {
         sendResponse({ success: false, error: 'Invalid sender' });
         return;
       }
       
       if (message.action === 'fillCredentials') {
-        // amazonq-ignore-next-line
         try {
           const success = fillCredentials(message);
           sendResponse({ success });
@@ -112,7 +106,6 @@
   function init() {
     try {
       // Listen for messages from the extension
-      // amazonq-ignore-next-line
       chrome.runtime.onMessage.addListener(handleMessage);
       
     } catch (error) {

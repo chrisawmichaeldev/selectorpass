@@ -125,7 +125,6 @@ function setupEventListeners() {
     if (buyCoffeeBtn) {
       buyCoffeeBtn.addEventListener('click', () => {
         try {
-          // amazonq-ignore-next-line
           chrome.tabs.create({ url: 'https://buymeacoffee.com/cawmdev' });
         } catch (error) {
           // Silent error handling
@@ -146,7 +145,6 @@ function setupEventListeners() {
  */
 async function toggleAddDomainSection() {
   try {
-    // amazonq-ignore-next-line
     const section = document.querySelector('.collapsible');
     if (!section) {
       return;
@@ -191,7 +189,6 @@ async function toggleManageDomainsSection() {
 /**
  * Restore the saved collapse states for main sections
  */
-// amazonq-ignore-next-line
 async function restoreAddDomainState() {
   try {
     const result = await chrome.storage.local.get(['addDomainExpanded', 'manageDomainsExpanded']);
@@ -223,10 +220,8 @@ async function toggleDomainSection(domain) {
       return;
     }
     
-    // amazonq-ignore-next-line
     const domainItem = document.querySelector(`[data-domain="${domain}"].domain-collapsible`);
     
-    // amazonq-ignore-next-line
     if (domainItem) {
       domainItem.classList.toggle('expanded');
       
@@ -311,7 +306,6 @@ function handleButtonClick(event) {
     if (action) {
       const handler = actionHandlers.get(action);
       if (handler) {
-        // amazonq-ignore-next-line
         handler(domain, button);
       }
     }
@@ -329,7 +323,6 @@ function handleButtonClick(event) {
  */
 function isValidDomain(domain) {
   // Basic domain validation - alphanumeric, dots, hyphens
-  // amazonq-ignore-next-line
   const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](?:\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])*$/;
   return domainRegex.test(domain) && domain.length <= 253;
 }
@@ -339,7 +332,6 @@ function isValidDomain(domain) {
  * @param {string} selector - CSS selector to validate
  * @returns {boolean} True if valid
  */
-// amazonq-ignore-next-line
 function isValidSelector(selector) {
   try {
     // Test if it's a valid CSS selector by trying to use it
@@ -388,11 +380,6 @@ async function saveDomain() {
     }
     
     const domains = await loadData();
-    // amazonq-ignore-next-line
-    // amazonq-ignore-next-line
-    // amazonq-ignore-next-line
-    // amazonq-ignore-next-line
-    // amazonq-ignore-next-line
     domains[domain] = {
       usernameSelector: usernameSelector,
       passwordSelector: passwordSelector,
@@ -445,7 +432,6 @@ async function displayDomains(domains) {
     });
     
     // Add event listeners for all buttons
-    // amazonq-ignore-next-line
     container.addEventListener('click', handleButtonClick);
     
     // Add drag and drop listeners
@@ -458,7 +444,6 @@ async function displayDomains(domains) {
   }
 }
 
-// amazonq-ignore-next-line
 function createDomainElement(domain, config) {
   const domainDiv = document.createElement('div');
   domainDiv.className = 'domain-item domain-collapsible';
@@ -541,7 +526,6 @@ function createDomainHeader(domain) {
   header.appendChild(buttons);
   
   // Add click listener to the left side only (not buttons)
-  // amazonq-ignore-next-line
   leftSide.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleDomainSection(domain);
@@ -560,10 +544,8 @@ function createSelectorInfo(domain, config) {
   
   const selectorText = document.createElement('div');
   const usernameLine = document.createElement('div');
-  // amazonq-ignore-next-line
   usernameLine.textContent = `Username selector: ${config.usernameSelector.trim()}`;
   const passwordLine = document.createElement('div');
-  // amazonq-ignore-next-line
   passwordLine.textContent = `Password selector: ${config.passwordSelector.trim()}`;
   selectorText.appendChild(usernameLine);
   selectorText.appendChild(passwordLine);
@@ -604,15 +586,6 @@ function createSelectorEditForm(config) {
   usernameInput.type = 'text';
   usernameInput.className = 'selector-input';
   usernameInput.dataset.field = 'usernameSelector';
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
   usernameInput.value = config.usernameSelector.trim();
   usernameRow.appendChild(usernameLabel);
   usernameRow.appendChild(usernameInput);
@@ -626,7 +599,6 @@ function createSelectorEditForm(config) {
   passwordInput.type = 'text';
   passwordInput.className = 'selector-input';
   passwordInput.dataset.field = 'passwordSelector';
-  // amazonq-ignore-next-line
   passwordInput.value = config.passwordSelector.trim();
   passwordRow.appendChild(passwordLabel);
   passwordRow.appendChild(passwordInput);
@@ -663,7 +635,6 @@ function createCredentialsSection(domain, config) {
   const form = createCredentialForm(domain);
   
   const credentialsDiv = document.createElement('div');
-  // amazonq-ignore-next-line
   credentialsDiv.id = `credentials-${domain}`;
   
   (config.credentials || []).forEach((cred, index) => {
@@ -695,8 +666,6 @@ function createCredentialItem(domain, cred, index) {
   
   const username = document.createElement('span');
   username.className = 'credential-username';
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
   username.textContent = cred.username.trim();
   
   const buttons = document.createElement('div');
@@ -729,12 +698,6 @@ function createCredentialEditForm(domain, cred, index) {
   const usernameInput = document.createElement('input');
   usernameInput.type = 'text';
   usernameInput.className = 'cred-username-input';
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
   usernameInput.value = cred.username.trim();
   usernameInput.placeholder = 'Username';
   
@@ -744,7 +707,6 @@ function createCredentialEditForm(domain, cred, index) {
   const passwordInput = document.createElement('input');
   passwordInput.type = 'password';
   passwordInput.className = 'cred-password-input';
-  // amazonq-ignore-next-line
   passwordInput.value = cred.password.trim();
   passwordInput.placeholder = 'Password';
   
@@ -781,7 +743,6 @@ function createCredentialForm(domain) {
   
   const usernameInput = document.createElement('input');
   usernameInput.type = 'text';
-  // amazonq-ignore-next-line
   usernameInput.placeholder = 'Username';
   usernameInput.id = `username-${domain}`;
   
@@ -842,12 +803,7 @@ async function addCredential(domain) {
       return;
     }
     
-    // amazonq-ignore-next-line
-    // amazonq-ignore-next-line
-    // amazonq-ignore-next-line
-    // amazonq-ignore-next-line
     domains[domain].credentials.push({ 
-      // amazonq-ignore-next-line
       username: username, 
       password: password 
     });
@@ -858,7 +814,6 @@ async function addCredential(domain) {
     usernameInput.value = '';
     passwordInput.value = '';
     
-    // amazonq-ignore-next-line
     await loadAndDisplayDomains();
   } catch (error) {
     console.error('SelectorPass: Error adding credential:', error);
@@ -963,7 +918,6 @@ async function deleteCredential(domain, index) {
   try {
     const domains = await loadData();
     
-    // amazonq-ignore-next-line
     if (!domains[domain] || !domains[domain].credentials || !domains[domain].credentials[index]) {
       console.error('SelectorPass: Invalid domain or credential index');
       return;
@@ -1005,7 +959,6 @@ function editDomain(domain) {
     const saveBtn = domainItem.querySelector('[data-action="save-domain"]');
     const cancelBtn = domainItem.querySelector('[data-action="cancel-edit"]');
     
-    // amazonq-ignore-next-line
     if (!domainSpan || !domainInput || !selectorDisplay || !selectorEdit || !editBtn || !saveBtn || !cancelBtn) {
       console.error('SelectorPass: Required elements not found for domain editing');
       return;
@@ -1076,7 +1029,6 @@ async function saveDomainEdit(oldDomain) {
     
     // Update or create domain with new values
     const domainData = {
-      // amazonq-ignore-next-line
       usernameSelector: newUsernameSelector.trim(),
       passwordSelector: newPasswordSelector.trim(),
       autoSortRecent: autoSortRecent,
@@ -1085,7 +1037,6 @@ async function saveDomainEdit(oldDomain) {
     
     if (newDomain !== oldDomain) {
       domains[newDomain] = domainData;
-      // amazonq-ignore-next-line
       delete domains[oldDomain];
     } else {
       domains[oldDomain] = domainData;
@@ -1120,8 +1071,6 @@ function cancelDomainEdit(domain) {
       return;
     }
     
-    // amazonq-ignore-next-line
-    // amazonq-ignore-next-line
     // Reset domain input
     domainInput.value = domain;
     
@@ -1142,7 +1091,6 @@ function cancelDomainEdit(domain) {
   }
 }
 
-// amazonq-ignore-next-line
 function editCredential(domain, index) {
   try {
     const credentialItem = document.querySelector(`[data-domain="${domain}"][data-index="${index}"]`)?.closest('.credential-item');
@@ -1205,9 +1153,6 @@ async function saveCredential(domain, index) {
     }
     
     domains[domain].credentials[index] = {
-      // amazonq-ignore-next-line
-      // amazonq-ignore-next-line
-      // amazonq-ignore-next-line
       username: newUsername.trim(),
       password: newPassword.trim()
     };
@@ -1236,7 +1181,6 @@ function cancelCredential(domain, index) {
       return;
     }
     
-    // amazonq-ignore-next-line
     display.style.display = 'flex';
     edit.style.display = 'none';
   } catch (error) {
@@ -1244,7 +1188,6 @@ function cancelCredential(domain, index) {
   }
 }
 
-// amazonq-ignore-next-line
 function togglePassword(domain, index) {
   try {
     const credentialItem = document.querySelector(`[data-domain="${domain}"][data-index="${index}"]`)?.closest('.credential-item');
@@ -1278,7 +1221,6 @@ function setupDragAndDrop(container) {
   let draggedIndex = null;
   let draggedDomain = null;
   
-  // amazonq-ignore-next-line
   container.addEventListener('dragstart', (e) => {
     const credentialItem = e.target.closest('.credential-item');
     if (credentialItem) {
@@ -1290,7 +1232,6 @@ function setupDragAndDrop(container) {
     }
   });
   
-  // amazonq-ignore-next-line
   container.addEventListener('dragend', (e) => {
     const credentialItem = e.target.closest('.credential-item');
     if (credentialItem) {
@@ -1301,9 +1242,6 @@ function setupDragAndDrop(container) {
     }
   });
   
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
   container.addEventListener('dragover', (e) => {
     e.preventDefault();
     const credentialItem = e.target.closest('.credential-item');
@@ -1312,7 +1250,6 @@ function setupDragAndDrop(container) {
     }
   });
   
-  // amazonq-ignore-next-line
   container.addEventListener('dragleave', (e) => {
     const credentialItem = e.target.closest('.credential-item');
     if (credentialItem) {
@@ -1320,7 +1257,6 @@ function setupDragAndDrop(container) {
     }
   });
   
-  // amazonq-ignore-next-line
   container.addEventListener('drop', async (e) => {
     e.preventDefault();
     
@@ -1375,7 +1311,6 @@ async function reorderCredentials(domain, fromIndex, toIndex) {
     credentials.splice(toIndex, 0, movedItem);
     
     await saveData(domains);
-    // amazonq-ignore-next-line
     await loadAndDisplayDomains();
   } catch (error) {
     console.error('SelectorPass: Error reordering credentials:', error);
@@ -1383,16 +1318,12 @@ async function reorderCredentials(domain, fromIndex, toIndex) {
 }
 
 async function deleteDomain(domain) {
-  // amazonq-ignore-next-line
-  // amazonq-ignore-next-line
   try {
     showConfirmDialog(
       `Delete domain ${domain} and all its credentials?`,
-      // amazonq-ignore-next-line
       async () => {
         try {
           const domains = await loadData();
-          // amazonq-ignore-next-line
           delete domains[domain];
           await saveData(domains);
           await loadAndDisplayDomains();
@@ -1401,9 +1332,7 @@ async function deleteDomain(domain) {
           showConfirmDialog('Error deleting domain. Please try again.', () => {});
         }
       }
-    // amazonq-ignore-next-line
     );
-  // amazonq-ignore-next-line
   } catch (error) {
     console.error('SelectorPass: Error in deleteDomain:', error);
   }

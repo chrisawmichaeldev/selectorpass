@@ -48,7 +48,6 @@ function setupSettingsButton() {
     if (settingsBtn) {
       settingsBtn.addEventListener('click', async () => {
         try {
-          // amazonq-ignore-next-line
           const currentDomain = await getCurrentDomain();
           const domains = await loadData();
           
@@ -111,7 +110,6 @@ async function saveData(domains) {
   try {
     await chrome.storage.local.set({ domains });
   } catch (error) {
-    // amazonq-ignore-next-line
     throw error;
   }
 }
@@ -141,7 +139,6 @@ function showNoConfigMessage() {
  */
 function showErrorMessage(message) {
   try {
-    // amazonq-ignore-next-line
     const noConfigDiv = document.getElementById('noConfig');
     const credentialsListEl = document.getElementById('credentialsList');
     
@@ -182,7 +179,6 @@ function showCredentialsList(domain, domainConfig) {
     if (credentialsListEl) credentialsListEl.style.display = 'block';
     
     // Clear existing credentials and rebuild list
-    // amazonq-ignore-next-line
     container.replaceChildren();
     
     const credentials = domainConfig.credentials || [];
@@ -223,7 +219,6 @@ function createCredentialElement(domain, domainConfig, credential, index) {
   // Create username display
   const usernameSpan = document.createElement('span');
   usernameSpan.className = 'credential-username';
-  // amazonq-ignore-next-line
   usernameSpan.textContent = credential.username.trim();
   
   // Create fill button
@@ -234,14 +229,12 @@ function createCredentialElement(domain, domainConfig, credential, index) {
   fillBtn.setAttribute('aria-label', `Fill credentials for ${credential.username}`);
   
   // Add click handler for filling credentials
-  // amazonq-ignore-next-line
   fillBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     fillCredentials(domain, domainConfig, index);
   });
   
   // Add keyboard support
-  // amazonq-ignore-next-line
   fillBtn.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -339,7 +332,6 @@ async function fillCredentials(domain, domainConfig, credIndex) {
  * @param {number} credIndex - Index of credential being used
  * @returns {boolean} True if should move to top
  */
-// amazonq-ignore-next-line
 function shouldMoveToTop(domainConfig, credIndex) {
   // Only move if auto-sort is enabled and not already at top
   return domainConfig.autoSortRecent !== false && credIndex > 0;
