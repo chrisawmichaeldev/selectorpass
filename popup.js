@@ -1,7 +1,30 @@
 /**
  * SelectorPass Popup Script
- * Handles the extension popup interface for credential selection and form filling
+ * 
+ * This script manages the extension popup interface, providing users with
+ * a quick way to select and fill credentials on the current website.
+ * 
+ * Key Features:
+ * - Automatic domain detection from current tab
+ * - Credential listing with encryption indicators
+ * - Secure master password prompting with custom modal
+ * - Real-time login status updates
+ * - Auto-sort recently used credentials
+ * - Content script injection and form filling
+ * 
+ * Security Features:
+ * - Encapsulated in IIFE to prevent namespace pollution
+ * - Secure password modal with masked input
+ * - Session-based master password management
+ * - Error handling without exposing sensitive data
+ * 
+ * @fileoverview Popup interface for SelectorPass extension
+ * @author SelectorPass Team
+ * @version 1.1.1
  */
+
+(() => {
+  'use strict';
 
 // ============================================================================
 // INITIALIZATION
@@ -9,29 +32,42 @@
 
 /**
  * Initialize popup when DOM is loaded
- * Sets up the interface based on current domain configuration
+ * 
+ * This is the main entry point for the popup interface. It:
+ * 1. Detects the current website domain
+ * 2. Loads domain configuration from storage
+ * 3. Displays appropriate interface (credentials list or setup message)
+ * 4. Sets up event handlers and login status indicator
+ * 
+ * @async
+ * @function
  */
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    // Get current tab's domain and display it
+    // Get current tab's domain and display it in the popup header
     const currentDomain = await getCurrentDomain();
     const domainElement = document.getElementById('currentDomain');
     if (domainElement) {
       domainElement.textContent = currentDomain;
     }
     
-    // Load domain configurations from storage
+    // Load all domain configurations from Chrome storage
     const domains = await loadData();
     
-    // Show appropriate interface based on domain configuration
+    // Show appropriate interface based on whether domain is configured
     if (!domains[currentDomain]) {
+      // Domain not configured - show setup message with link to options
       showNoConfigMessage();
     } else {
-      showCredentialsList(currentDomain, domains[currentDomain]);
+      // Domain configured - show list of available credentials
+      await showCredentialsList(currentDomain, domains[currentDomain]);
     }
     
     // Setup settings button to open options page
     setupSettingsButton();
+    
+    // Update login status indicator
+    await updateLoginStatus();
     
   } catch (error) {
     // Show error message to user
@@ -41,6 +77,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 /**
  * Setup settings button click handler
+ * 
+ * Configures the settings button to open the options page.
+ * If the current domain is not configured, it pre-populates
+ * the domain field in the options page for user convenience.
+ * 
+ * @function
  */
 function setupSettingsButton() {
   try {
@@ -74,7 +116,17 @@ function setupSettingsButton() {
 
 /**
  * Get the hostname of the current active tab
+ * 
+ * Uses Chrome tabs API to get the current active tab and extracts
+ * the hostname from its URL for domain-based credential lookup.
+ * 
+ * @async
  * @returns {Promise<string>} The hostname (e.g., 'example.com')
+ * @throws {Error} If unable to access current tab or extract domain
+ * 
+ * @example
+ * const domain = await getCurrentDomain();
+ * // Returns: 'github.com' for https://github.com/user/repo
  */
 async function getCurrentDomain() {
   try {
@@ -91,7 +143,16 @@ async function getCurrentDomain() {
 
 /**
  * Load all domain configurations from Chrome storage
+ * 
+ * Retrieves the complete domains object from chrome.storage.local.
+ * Returns empty object if no data exists (first run).
+ * 
+ * @async
  * @returns {Promise<Object>} Object containing all domain configurations
+ * 
+ * @example
+ * const domains = await loadData();
+ * // Returns: { 'example.com': { usernameSelector: '#user', ... }, ... }
  */
 async function loadData() {
   try {
@@ -104,7 +165,13 @@ async function loadData() {
 
 /**
  * Save domain configurations to Chrome storage
+ * 
+ * Persists the complete domains object to chrome.storage.local.
+ * Used when updating credential order (auto-sort recent).
+ * 
+ * @async
  * @param {Object} domains - Complete domains configuration object
+ * @throws {Error} If storage operation fails
  */
 async function saveData(domains) {
   try {
@@ -120,6 +187,11 @@ async function saveData(domains) {
 
 /**
  * Show message when no configuration exists for current domain
+ * 
+ * Displays a user-friendly message indicating that the current
+ * domain needs to be configured before credentials can be used.
+ * 
+ * @function
  */
 function showNoConfigMessage() {
   try {
@@ -135,9 +207,18 @@ function showNoConfigMessage() {
 
 /**
  * Show error message to user
- * @param {string} message - Error message to display
+ * 
+ * Displays error messages in the popup interface. Can optionally
+ * preserve the credentials list for non-critical errors.
+ * 
+ * @param {string} message - Error message to display to user
+ * @param {boolean} [clearCredentials=true] - Whether to hide credentials list
+ * 
+ * @example
+ * showErrorMessage('Incorrect master password', false); // Keep credentials visible
+ * showErrorMessage('Failed to load data'); // Hide credentials
  */
-function showErrorMessage(message) {
+function showErrorMessage(message, clearCredentials = true) {
   try {
     const noConfigDiv = document.getElementById('noConfig');
     const credentialsListEl = document.getElementById('credentialsList');
@@ -151,7 +232,7 @@ function showErrorMessage(message) {
       noConfigDiv.style.display = 'block';
     }
     
-    if (credentialsListEl) {
+    if (clearCredentials && credentialsListEl) {
       credentialsListEl.style.display = 'none';
     }
   } catch (error) {
@@ -161,10 +242,19 @@ function showErrorMessage(message) {
 
 /**
  * Display list of available credentials for the current domain
- * @param {string} domain - The current domain
- * @param {Object} domainConfig - Configuration object for the domain
+ * 
+ * Creates and displays credential items with encryption indicators
+ * and fill buttons. Focuses the first fill button for keyboard navigation.
+ * 
+ * @async
+ * @param {string} domain - The current domain name
+ * @param {Object} domainConfig - Domain configuration object
+ * @param {string} domainConfig.usernameSelector - CSS selector for username field
+ * @param {string} domainConfig.passwordSelector - CSS selector for password field
+ * @param {Array} domainConfig.credentials - Array of credential objects
+ * @param {boolean} [domainConfig.autoSortRecent] - Whether to auto-sort recent credentials
  */
-function showCredentialsList(domain, domainConfig) {
+async function showCredentialsList(domain, domainConfig) {
   try {
     // Hide no-config message and show credentials list
     const noConfigEl = document.getElementById('noConfig');
@@ -205,21 +295,30 @@ function showCredentialsList(domain, domainConfig) {
 
 /**
  * Create a single credential list item element
+ * 
+ * Builds a DOM element for a credential with username display,
+ * encryption indicator, and fill button with event handlers.
+ * 
  * @param {string} domain - The domain name
- * @param {Object} domainConfig - Domain configuration
+ * @param {Object} domainConfig - Domain configuration object
  * @param {Object} credential - Individual credential object
+ * @param {string} credential.username - Username for display
+ * @param {string|Object} credential.password - Password (string or encrypted object)
+ * @param {boolean} [credential.encrypted] - Whether credential is encrypted
  * @param {number} index - Index of credential in array
- * @returns {HTMLElement} The credential item element
+ * @returns {HTMLElement} The credential item DOM element
  */
 function createCredentialElement(domain, domainConfig, credential, index) {
   // Create main container
   const item = document.createElement('div');
   item.className = 'credential-item';
   
-  // Create username display
+  // Create username display with encryption indicator
   const usernameSpan = document.createElement('span');
   usernameSpan.className = 'credential-username';
-  usernameSpan.textContent = credential.username.trim();
+  
+  const iconClass = credential.encrypted ? 'encryption-badge' : 'encryption-badge hidden';
+  usernameSpan.innerHTML = `<span class="${iconClass}">🔐</span> ${credential.username.trim()}`;
   
   // Create fill button
   const fillBtn = document.createElement('button');
@@ -255,9 +354,18 @@ function createCredentialElement(domain, domainConfig, credential, index) {
 
 /**
  * Fill form fields with selected credentials
+ * 
+ * This is the main form filling function that:
+ * 1. Handles encrypted credential decryption
+ * 2. Manages master password prompting and session storage
+ * 3. Implements auto-sort functionality
+ * 4. Injects content script and sends fill command
+ * 5. Closes popup on successful completion
+ * 
+ * @async
  * @param {string} domain - The domain name
- * @param {Object} domainConfig - Domain configuration with selectors
- * @param {number} credIndex - Index of selected credential
+ * @param {Object} domainConfig - Domain configuration with CSS selectors
+ * @param {number} credIndex - Index of selected credential in array
  */
 async function fillCredentials(domain, domainConfig, credIndex) {
   try {
@@ -275,7 +383,53 @@ async function fillCredentials(domain, domainConfig, credIndex) {
     }
     
     const credential = domainConfig.credentials[credIndex];
-    if (!credential || !credential.username || !credential.password) {
+    if (!credential) {
+      return;
+    }
+    
+    // Handle encrypted credentials
+    let username, password;
+    if (credential.encrypted) {
+      try {
+        // Check if master password is already in session
+        let masterPassword = await getMasterPassword();
+        
+        if (!masterPassword) {
+          // Prompt for master password using secure modal
+          masterPassword = await showPasswordModal();
+          if (!masterPassword) {
+            return; // User cancelled
+          }
+          
+          // Verify master password
+          const isValid = await verifyMasterPassword(masterPassword);
+          if (!isValid) {
+            showErrorMessage('Incorrect master password', false);
+            return;
+          }
+          
+          // Store in session for future use
+          await setMasterPassword(masterPassword, 'browser');
+          
+          // Update login status indicator
+          await updateLoginStatus();
+        }
+        
+        // Decrypt credential using session password
+        const decrypted = await decryptCredential(credential);
+        username = decrypted.username;
+        password = decrypted.password;
+      } catch (error) {
+        console.error('SelectorPass: Error decrypting credential:', error);
+        showErrorMessage('Error decrypting credential. Please try again.', false);
+        return;
+      }
+    } else {
+      username = credential.username;
+      password = credential.password;
+    }
+    
+    if (!username || !password) {
       return;
     }
     
@@ -311,15 +465,15 @@ async function fillCredentials(domain, domainConfig, credIndex) {
         action: 'fillCredentials',
         usernameSelector: domainConfig.usernameSelector.trim(),
         passwordSelector: domainConfig.passwordSelector.trim(),
-        username: credential.username.trim(),
-        password: credential.password.trim()
+        username: username.trim(),
+        password: password.trim()
       });
       
       // Close popup after successful filling
       window.close();
     } catch (error) {
       // Show user-friendly error message
-      showErrorMessage('Failed to fill form. Please refresh the page and try again.');
+      showErrorMessage('Failed to fill form. Please refresh the page and try again.', false);
     }
   } catch (error) {
     // Silent error handling
@@ -369,3 +523,88 @@ async function moveCredentialToTop(domain, credIndex) {
     // Silent error handling
   }
 }
+
+
+/**
+ * Show secure password modal and return entered password
+ * 
+ * Displays a custom modal with masked password input for master password entry.
+ * Includes keyboard support (Enter to submit, Escape to cancel) and proper
+ * event cleanup to prevent memory leaks.
+ * 
+ * @returns {Promise<string|null>} Master password or null if cancelled
+ * 
+ * @example
+ * const password = await showPasswordModal();
+ * if (password) {
+ *   // User entered password
+ * } else {
+ *   // User cancelled
+ * }
+ */
+function showPasswordModal() {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('passwordModal');
+    const input = document.getElementById('masterPasswordInput');
+    const submitBtn = document.getElementById('passwordSubmit');
+    const cancelBtn = document.getElementById('passwordCancel');
+    
+    // Show modal
+    modal.style.display = 'block';
+    input.value = '';
+    input.focus();
+    
+    const cleanup = () => {
+      modal.style.display = 'none';
+      submitBtn.removeEventListener('click', handleSubmit);
+      cancelBtn.removeEventListener('click', handleCancel);
+      input.removeEventListener('keydown', handleKeydown);
+    };
+    
+    const handleSubmit = () => {
+      const password = input.value.trim();
+      cleanup();
+      resolve(password || null);
+    };
+    
+    const handleCancel = () => {
+      cleanup();
+      resolve(null);
+    };
+    
+    const handleKeydown = (e) => {
+      if (e.key === 'Enter') {
+        handleSubmit();
+      } else if (e.key === 'Escape') {
+        handleCancel();
+      }
+    };
+    
+    submitBtn.addEventListener('click', handleSubmit);
+    cancelBtn.addEventListener('click', handleCancel);
+    input.addEventListener('keydown', handleKeydown);
+  });
+}
+/**
+ * Update login status indicator in popup header
+ * 
+ * Updates the status icon to show current login state:
+ * - 🔓 (unlocked) when master password is in session
+ * - 🚫 (blocked) when not logged in
+ * 
+ * @async
+ */
+async function updateLoginStatus() {
+  try {
+    const statusIcon = document.getElementById('statusIcon');
+    if (!statusIcon) return;
+    
+    const isLoggedIn = await isMasterPasswordSet();
+    statusIcon.textContent = isLoggedIn ? '🔓' : '🚫';
+    statusIcon.title = isLoggedIn ? 'Logged in' : 'Not logged in';
+  } catch (error) {
+    // Silent error handling
+  }
+}
+
+})();

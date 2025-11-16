@@ -13,11 +13,16 @@
 - **Domain-specific configuration**: Set CSS selectors once per domain
 - **Multiple credentials per domain**: Store multiple accounts for the same site
 - **Local-only storage**: Complete privacy with no cloud sync
+- **Optional AES-256 encryption**: Military-grade security for sensitive credentials
+- **Session management**: Master password remembered across contexts until browser close
+- **Per-credential encryption**: Choose which credentials to encrypt individually
 - **Precision targeting**: Manual CSS selectors when auto-detection fails
 - **Smart domain detection**: Auto-populates domain from current tab
 - **Auto-sort recent**: Recently used credentials move to top
 - **Drag & drop**: Reorder credentials with intuitive interface
 - **Collapsible interface**: Organize domains with expandable sections
+- **Real-time sync**: Login status updates instantly across popup and options
+- **Secure password prompts**: Masked input fields for master password entry
 - **Confirmation dialogs**: Safe deletion with cancel options
 - **Persistent settings**: Remembers UI state and preferences
 
@@ -52,31 +57,53 @@
 
 1. Navigate to a configured website
 2. Click the extension icon
-3. Choose from your saved credentials
-4. Click "Fill" to auto-fill the form
-5. Success message confirms form was filled
+3. Choose from your saved credentials (🔐 indicates encrypted)
+4. Enter master password if prompted for encrypted credentials
+5. Click "Fill" to auto-fill the form
+6. Popup closes automatically after successful filling
 
 ### Manage Your Data
 
 - **Edit credentials**: Click "Edit" button to modify saved accounts
+- **Encrypt/decrypt**: Toggle encryption per credential with 🔐/🔓 buttons
+- **Master password**: Set up optional master password for encryption
+- **Session login**: Login once, access encrypted credentials until browser close
 - **Delete safely**: Confirmation dialogs prevent accidental deletion
 - **Update selectors**: Re-save domain with new CSS selectors (preserves credentials)
 - **Organize domains**: Collapse/expand sections, state persists across sessions
 
 ## Data Structure
 
-The extension uses a unified data structure:
+The extension uses a unified data structure supporting both encrypted and unencrypted credentials:
 
 ```javascript
-domains: {
-  "example.com": {
-    usernameSelector: "#username",
-    passwordSelector: "#password",
-    autoSortRecent: true,
-    credentials: [
-      { username: "user1", password: "pass1" },
-      { username: "user2", password: "pass2" }
-    ]
+{
+  domains: {
+    "example.com": {
+      usernameSelector: "#username",
+      passwordSelector: "#password",
+      autoSortRecent: true,
+      credentials: [
+        // Unencrypted credential
+        { username: "user1", password: "pass1" },
+        
+        // Encrypted credential
+        { 
+          username: "user2",
+          password: {
+            encrypted: [1,2,3,...],
+            salt: [4,5,6,...],
+            iv: [7,8,9,...]
+          },
+          encrypted: true
+        }
+      ]
+    }
+  },
+  securitySettings: {
+    masterPasswordSet: true,
+    masterPasswordHash: "sha256_hash",
+    pbkdf2Iterations: 100000
   }
 }
 ```
@@ -87,6 +114,9 @@ domains: {
 - **Form not filling**: Check CSS selectors are correct for the website
 - **Invalid selectors**: Extension saves any selectors you enter (validation is visual)
 - **Missing credentials**: Ensure you're on the correct domain and have saved credentials
+- **Encrypted credentials not filling**: Ensure you're logged in with master password
+- **Master password prompt**: Enter password once per browser session for encrypted credentials
+- **Options not updating**: Real-time sync should work automatically via port connections
 
 ## Testing
 
@@ -97,7 +127,9 @@ See [MANUAL_TESTS.md](MANUAL_TESTS.md) for comprehensive testing procedures.
 Built with:
 - Chrome Extension Manifest V3
 - Vanilla JavaScript
-- Local storage API
+- Web Crypto API (AES-256-GCM encryption)
+- Chrome Storage API
+- Chrome Runtime Messaging
 - CSS selector targeting
 
 ## License

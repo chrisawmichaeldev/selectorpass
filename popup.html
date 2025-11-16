@@ -8,7 +8,12 @@
   <div class="container">
     <div class="header">
       <h1>SelectorPass</h1>
-      <button id="settingsBtn" class="settings-btn">⚙️</button>
+      <div class="header-right">
+        <button id="loginStatus" class="login-status-btn">
+          <span id="statusIcon">🚫</span>
+        </button>
+        <button id="settingsBtn" class="settings-btn">⚙️</button>
+      </div>
     </div>
     
     <div id="noConfig" class="message">
@@ -21,8 +26,20 @@
       </div>
       <div id="credentials"></div>
     </div>
+    
+    <div id="passwordModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <h3>Master Password Required</h3>
+        <input type="password" id="masterPasswordInput" placeholder="Enter master password">
+        <div class="modal-buttons">
+          <button id="passwordCancel">Cancel</button>
+          <button id="passwordSubmit">OK</button>
+        </div>
+      </div>
+    </div>
   </div>
   
+  <script src="encryption.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

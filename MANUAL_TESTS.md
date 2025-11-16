@@ -473,6 +473,214 @@ And Enter key should fill the form
 
 ---
 
+## Feature: Password Encryption
+
+### Scenario: Set up master password
+```gherkin
+Given I am on the SelectorPass options page
+When I expand the "🔐 Security" section
+And I click "Setup Master Password" button
+Then I should see master password setup form
+When I enter a password with less than 8 characters
+And I click "Set Master Password"
+Then I should see "Master password must be at least 8 characters"
+When I enter matching passwords (8+ characters)
+And I click "Set Master Password"
+Then I should see "Master password set successfully!"
+And the status should show "🔓 Logged in"
+```
+- [x] Test completed
+
+---
+
+### Scenario: Add encrypted credential
+```gherkin
+Given I have a master password set up
+And I have a domain configured
+When I add a new credential
+And I check the "Encrypt this credential" checkbox
+And I click "Add"
+Then the credential should be saved with encryption
+And I should see a lock icon 🔐 next to the username
+```
+- [x] Test completed
+
+---
+
+### Scenario: Encrypt existing credential
+```gherkin
+Given I have an unencrypted credential
+And I am logged in with master password
+When I click the "🔐" (encrypt) button for that credential
+Then I should see confirmation "Encrypt this credential?"
+When I click "OK"
+Then the credential should become encrypted
+And the button should change to "🔓" (decrypt)
+```
+- [x] Test completed
+
+---
+
+### Scenario: Edit encrypted credential when logged in
+```gherkin
+Given I have an encrypted credential (shows lock icon 🔐)
+And I am logged in with master password
+When I click "Edit" for that credential
+Then the username field should show the actual username
+And the password field should show the actual decrypted password
+When I change the password and click "Save"
+Then the credential should remain encrypted with new password
+And the lock icon should still be visible
+```
+- [x] Test completed
+
+---
+
+### Scenario: Use encrypted credential in popup (first time)
+```gherkin
+Given I have encrypted credentials for a domain
+And I am not currently logged in
+When I navigate to that domain
+And I click the extension icon
+And I click "Fill" for an encrypted credential (shows 🔐)
+Then I should see a password modal "Master Password Required"
+When I enter the correct master password and click "OK"
+Then the form should be filled with the decrypted credentials
+And the popup should close
+And the popup status icon should show 🔓 (logged in)
+```
+- [x] Test completed
+
+---
+
+### Scenario: Use encrypted credential when already logged in
+```gherkin
+Given I have encrypted credentials for a domain
+And I am currently logged in (master password in session)
+When I navigate to that domain
+And I click "Fill" for an encrypted credential
+Then the form should be filled immediately without prompting
+And the popup should close
+```
+- [x] Test completed
+
+---
+
+### Scenario: Cross-context login status sync
+```gherkin
+Given I have the options page open
+And the status shows "🚫 Logged out"
+When I open the popup in another tab
+And I fill an encrypted credential (entering master password)
+Then I should return to the options page
+And the status should automatically update to "🔓 Logged in"
+Without needing to refresh the page
+```
+- [x] Test completed
+
+---
+
+### Scenario: Change master password
+```gherkin
+Given I have encrypted credentials with an existing master password
+When I click "Change Master Password"
+Then I should see a dialog for new master password
+When I enter a new password (8+ characters) and confirm
+Then I should see "Master password changed successfully!"
+And all existing encrypted credentials should still work with the new password
+```
+- [x] Test completed
+
+---
+
+### Scenario: Decrypt credential (remove encryption)
+```gherkin
+Given I have an encrypted credential
+And I am logged in with master password
+When I click the "🔓" (decrypt) button for that credential
+Then I should see confirmation "Remove encryption from this credential?"
+When I click "OK"
+Then the credential should become unencrypted
+And the lock icon should disappear
+And the button should change to "🔐" (encrypt)
+```
+- [x] Test completed
+
+---
+
+### Scenario: Session persists until browser close
+```gherkin
+Given I am logged in with master password
+When I close the popup and options page
+And I reopen the popup later
+Then the status should still show logged in (🔓)
+And encrypted credentials should fill without password prompt
+When I close the entire browser and reopen
+Then I should need to enter master password again
+```
+- [x] Test completed
+
+---
+
+### Scenario: Mixed encrypted and unencrypted credentials
+```gherkin
+Given I have a domain with both encrypted and unencrypted credentials
+When I view the credentials list in options
+Then encrypted credentials should show lock icon 🔐
+And unencrypted credentials should show no icon
+When I view them in popup
+Then encrypted credentials should show lock icon 🔐
+When I use an unencrypted credential
+Then it should fill immediately without password prompt
+When I use an encrypted credential (and not logged in)
+Then it should prompt for master password
+```
+- [x] Test completed
+
+---
+
+### Scenario: Error handling for encrypted credentials
+```gherkin
+Given I have encrypted credentials
+And I am not logged in
+When I try to fill an encrypted credential
+And I enter an incorrect master password
+Then I should see "Incorrect master password" error
+And the credentials list should remain visible
+And I should be able to try again
+```
+- [x] Test completed
+
+---
+
+### Scenario: Secure password input
+```gherkin
+Given I need to enter my master password
+When the password modal appears
+Then the input field should be type="password" (masked)
+And I should be able to use Enter key to submit
+And I should be able to use Escape key to cancel
+And clicking outside the modal should not close it
+```
+- [x] Test completed
+
+---
+
+### Scenario: Visual indicators for login status
+```gherkin
+Given I have master password set up
+When I am logged out
+Then the options page should show "🚫 Logged out"
+And the popup should show 🚫 icon
+When I am logged in
+Then the options page should show "🔓 Logged in"
+And the popup should show 🔓 icon
+And both should update in real-time when status changes
+```
+- [x] Test completed
+
+---
+
 ## Performance Tests
 
 ### Scenario: Handle large number of credentials

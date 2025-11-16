@@ -44,6 +44,72 @@
       </div>
     </div>
     
+    <div class="section collapsible">
+      <h2 class="collapsible-header" id="securityHeader">
+        <span class="expand-icon">▶</span>
+        🔐 Security
+      </h2>
+      <div class="collapsible-content" id="securityContent">
+        <div>
+          <div class="security-info">
+            <p>Manage your master password for encrypted credentials.</p>
+            <p><strong>Encryption:</strong> Uses AES-256-GCM with PBKDF2 key derivation for military-grade security.</p>
+            <div id="loginStatus" class="login-status">
+              <span class="status-indicator" id="statusText">🚫 Logged out</span>
+            </div>
+          </div>
+          
+          <div id="setupMasterPasswordSection" class="setup-section">
+            <button id="setupMasterPasswordBtn" class="primary-btn">Setup Master Password</button>
+          </div>
+          
+          <div id="existingMasterPasswordSection" class="existing-section" style="display: none;">
+            <div class="button-row">
+              <button id="changeMasterPasswordBtn" class="secondary-btn">Change Master Password</button>
+            </div>
+          </div>
+          
+          <div id="masterPasswordSection" class="master-password-section" style="display: none;">
+            <div class="form-group">
+              <label for="masterPassword">Master Password:</label>
+              <input type="password" id="masterPassword" name="masterPassword" placeholder="Enter master password">
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm Password:</label>
+              <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm master password">
+            </div>
+            <button id="setMasterPasswordBtn" class="primary-btn">Set Master Password</button>
+          </div>
+          
+          <div id="unlockSection" class="unlock-section" style="display: none;">
+            <div class="form-group">
+              <label for="unlockPassword">Enter Master Password:</label>
+              <input type="password" id="unlockPassword" name="unlockPassword" placeholder="Master password">
+            </div>
+            <button id="unlockBtn" class="primary-btn">Unlock</button>
+          </div>
+          
+          <div id="encryptedSection" class="encrypted-section" style="display: none;">
+            <div class="status-info">
+              <span class="status-indicator encrypted">🔒 Encryption Active</span>
+              <p>New credentials will be encrypted automatically while unlocked.</p>
+            </div>
+            
+            <div class="info-text">
+              <p><strong>Security:</strong> Master password required for each encryption operation for maximum security.</p>
+            </div>
+            
+            <div id="bulkEncryptSection" class="bulk-encrypt-section" style="display: none;">
+              <button id="encryptAllBtn" class="secondary-btn">Encrypt All Existing Credentials</button>
+              <small class="help-text">This will encrypt all your current unencrypted credentials.</small>
+            </div>
+            
+
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <div class="section collapsible expanded">
       <h2 class="collapsible-header" id="manageDomainsHeader">
         <span class="expand-icon">▶</span>
@@ -68,6 +134,7 @@
     </div>
   </dialog>
   
+  <script src="encryption.js"></script>
   <script src="options.js"></script>
 </body>
 </html>
