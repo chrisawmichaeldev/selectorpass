@@ -19,7 +19,7 @@ Then I should see "SelectorPass" extension listed
 And the extension should be enabled
 And the extension icon should appear in the toolbar
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Extension popup opens
 ```gherkin
@@ -29,7 +29,7 @@ Then the popup should open
 And I should see "No configuration found for this domain." message
 And I should see "Settings" button
 ```
-- [ ] Test needed
+- [x] **AUTOMATED** (critical.spec.ts)
 
 ### Scenario: Add domain configuration
 ```gherkin
@@ -41,7 +41,7 @@ And I click "Save Domain" button
 Then the domain should appear in the domains list
 And the form should be cleared
 ```
-- [ ] Test needed
+- [x] **AUTOMATED** (critical.spec.ts)
 
 ### Scenario: Add first credential to domain
 ```gherkin
@@ -52,12 +52,12 @@ And I click "Add" button
 Then the credential should appear in the credentials list
 And the form should be cleared
 ```
-- [ ] Test needed
+- [x] **AUTOMATED** (critical.spec.ts)
 
 ### Scenario: Fill form with single credential
 ```gherkin
 Given I have configured "chrisawmichaeldev.github.io" with selectors "#username" and "#password"
-And I have one credential "demouser" / "demopass"
+And I have one credential "demouser" / "demouser"
 When I navigate to https://chrisawmichaeldev.github.io/selectorpass/demo.html
 And I click the SelectorPass extension icon
 Then I should see the credential "demouser" listed
@@ -66,7 +66,7 @@ Then the username field should contain "demouser"
 And the password field should contain "demopass"
 And the popup should close
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ---
 
@@ -86,7 +86,7 @@ And I click "Set Master Password"
 Then I should see "Master password set successfully!"
 And the status should show "🔓 Logged in"
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Add encrypted credential
 ```gherkin
@@ -98,7 +98,7 @@ And I click "Add"
 Then the credential should be saved with encryption
 And I should see a lock icon 🔐 next to the username
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Use encrypted credential in popup (first time)
 ```gherkin
@@ -113,7 +113,7 @@ Then the form should be filled with the decrypted credentials
 And the popup should close
 And the popup status icon should show 🔓 (logged in)
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Use encrypted credential when already logged in
 ```gherkin
@@ -124,7 +124,7 @@ And I click "Fill" for an encrypted credential
 Then the form should be filled immediately without prompting
 And the popup should close
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Error handling for encrypted credentials
 ```gherkin
@@ -136,7 +136,7 @@ Then I should see "Incorrect master password" error
 And the credentials list should remain visible
 And I should be able to try again
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ---
 
@@ -153,7 +153,7 @@ Then the options page should immediately show "🔓 Logged in"
 And the popup should automatically update to show 🔓 icon
 And both should remain synchronized
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Login via popup filling - all contexts sync
 ```gherkin
@@ -168,7 +168,7 @@ And when I reopen the popup, it should show 🔓 icon
 And the options page should automatically update to "🔓 Logged in"
 Without needing to refresh
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Logout via options page - all contexts sync
 ```gherkin
@@ -180,7 +180,7 @@ Then the options page should immediately show "🚫 Logged out"
 And the popup should automatically update to show 🚫 icon
 And both should remain synchronized
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Automatic logout on browser close - all contexts sync
 ```gherkin
@@ -192,7 +192,7 @@ When I open the popup
 Then it should show 🚫 icon
 And encrypted credentials should require password prompt
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ---
 
@@ -206,7 +206,7 @@ And I add a third credential with username "testuser3" and password "testuser3"
 Then I should see all three credentials listed
 And each should have Edit and Delete buttons
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Edit existing credential
 ```gherkin
@@ -216,7 +216,7 @@ And I change the username to "editeduser1"
 And I click "Save Credential" button
 Then the credential should show "editeduser1"
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Delete credential with confirmation
 ```gherkin
@@ -226,7 +226,7 @@ Then I should see confirmation dialog "Delete this credential?"
 When I click "Delete" in the confirmation dialog
 Then the credential should be removed from the list
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Cancel credential deletion
 ```gherkin
@@ -236,7 +236,7 @@ And I click "Cancel" in the confirmation dialog
 Then the credential should remain in the list
 And no success message should appear
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Choose between multiple credentials
 ```gherkin
@@ -248,7 +248,7 @@ And each should have a "Fill" button
 When I click "Fill" for the second credential
 Then the form should be filled with that credential's data
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Mixed encrypted and unencrypted credentials
 ```gherkin
@@ -263,7 +263,7 @@ Then it should fill immediately without password prompt
 When I use an encrypted credential (and not logged in)
 Then it should prompt for master password
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ---
 
@@ -276,17 +276,18 @@ When I click "Settings" button
 Then the options page should open
 And I should see the domain configuration form
 ```
-- [ ] Test needed
+- [x] Test needed
 
-### Scenario: Domain auto-populates from current tab
+### Scenario: Domain auto-populates from current tab (when not already configured)
 ```gherkin
-Given I am on "chrisawmichaeldev.github.io" website
+Given I am on "example.com" website
+And "example.com" is NOT already configured in the extension
 When I click the extension icon
 And I click "Settings" button
 Then the options page should open
-And the domain field should be pre-filled with "chrisawmichaeldev.github.io"
+And the domain field should be pre-filled with "example.com"
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Domain does not auto-populate when already configured
 ```gherkin
@@ -298,7 +299,7 @@ Then the options page should open
 And the domain field should be empty
 And I should see the existing domain in the domains list
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Update existing domain configuration
 ```gherkin
@@ -308,7 +309,7 @@ And I change the username selector to "#email"
 And I click "Save" button
 Then the domain should show updated selectors
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Delete domain with confirmation
 ```gherkin
@@ -319,7 +320,7 @@ When I click "Delete" in the confirmation dialog
 Then the domain should be removed completely
 And all its credentials should be deleted
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Cancel domain deletion
 ```gherkin
@@ -329,7 +330,7 @@ And I click "Cancel" in the confirmation dialog
 Then the domain should remain in the list
 And all credentials should be preserved
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ---
 
@@ -345,7 +346,7 @@ When I click "OK"
 Then the credential should become encrypted
 And the button should change to "🔓" (decrypt)
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Decrypt credential (remove encryption)
 ```gherkin
@@ -358,7 +359,7 @@ Then the credential should become unencrypted
 And the lock icon should disappear
 And the button should change to "🔐" (encrypt)
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Edit encrypted credential when logged in
 ```gherkin
@@ -366,12 +367,14 @@ Given I have an encrypted credential (shows lock icon 🔐)
 And I am logged in with master password
 When I click "Edit" for that credential
 Then the username field should show the actual username
-And the password field should show the actual decrypted password
+And the password field should be populated with the decrypted password (but hidden as dots)
+When I click the eye icon to show the password
+Then the password should be visible in plain text
 When I change the password and click "Save"
 Then the credential should remain encrypted with new password
 And the lock icon should still be visible
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Change master password
 ```gherkin
@@ -382,17 +385,59 @@ When I enter a new password (8+ characters) and confirm
 Then I should see "Master password changed successfully!"
 And all existing encrypted credentials should still work with the new password
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Edit encrypted credential while logged out
 ```gherkin
 Given I have an encrypted credential
 And I am logged out
 When I click "Edit" for that encrypted credential
+Then the username field should show the actual username
+And the password field should show placeholder "Password (encrypted - enter new to change)"
+When I click the eye icon next to the password field
 Then I should see a master password prompt
 When I enter the correct master password
-Then the edit form should show decrypted values
+Then the password field should be populated with the decrypted password
+And I should be able to click the eye icon to show/hide the password
 And I should be able to modify and save the credential
+```
+- [x] Test needed
+
+### Scenario: Reset master password with mixed credentials
+```gherkin
+Given I have a master password set up
+And I have 3 encrypted credentials and 2 unencrypted credentials
+When I click "Reset Master Password" button
+Then I should see warning "This will permanently delete ALL encrypted credentials"
+When I click "Reset Master Password" in the dialog
+Then I should see "Master password reset successfully"
+And all encrypted credentials should be removed
+And all unencrypted credentials should remain
+And the security section should show "Setup Master Password" button
+```
+- [ ] Test needed
+
+### Scenario: Cancel reset master password
+```gherkin
+Given I have a master password set up
+And I have encrypted credentials
+When I click "Reset Master Password" button
+And I click "Cancel" in the warning dialog
+Then the dialog should close
+And all credentials should remain unchanged
+And the master password should still be set
+```
+- [ ] Test needed
+
+### Scenario: Reset master password with no encrypted credentials
+```gherkin
+Given I have a master password set up
+And I have only unencrypted credentials
+When I click "Reset Master Password" button
+And I confirm the reset
+Then I should see "Master password reset successfully"
+And all unencrypted credentials should remain
+And the security section should show "Setup Master Password" button
 ```
 - [ ] Test needed
 

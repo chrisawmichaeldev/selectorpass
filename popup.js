@@ -69,6 +69,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Update login status indicator
     await updateLoginStatus();
     
+    // Setup login status connection for real-time updates
+    setupLoginStatusConnection();
+    
   } catch (error) {
     // Show error message to user
     showErrorMessage('Failed to load SelectorPass. Please try again.');
@@ -588,20 +591,43 @@ function showPasswordModal() {
 /**
  * Update login status indicator in popup header
  * 
- * Updates the status icon to show current login state:
- * - 🔓 (unlocked) when master password is in session
- * - 🚫 (blocked) when not logged in
+ * Updates the status icon and text to show current login state:
+ * - 🔓 "Logged in" when master password is in session
+ * - 🚫 "Logged out" when not logged in
  * 
  * @async
  */
 async function updateLoginStatus() {
   try {
     const statusIcon = document.getElementById('statusIcon');
-    if (!statusIcon) return;
+    const statusText = document.getElementById('statusText');
+    if (!statusIcon || !statusText) return;
     
     const isLoggedIn = await isMasterPasswordSet();
-    statusIcon.textContent = isLoggedIn ? '🔓' : '🚫';
-    statusIcon.title = isLoggedIn ? 'Logged in' : 'Not logged in';
+    
+    if (isLoggedIn) {
+      statusIcon.textContent = '🔓';
+      statusText.textContent = 'Logged in';
+    } else {
+      statusIcon.textContent = '🚫';
+      statusText.textContent = 'Logged out';
+    }
+  } catch (error) {
+    // Silent error handling
+  }
+}
+
+/**
+ * Setup connection to background script for login status updates
+ */
+function setupLoginStatusConnection() {
+  try {
+    const port = chrome.runtime.connect({ name: 'loginStatus' });
+    port.onMessage.addListener((message) => {
+      if (message.action === 'loginStatusChanged') {
+        updateLoginStatus();
+      }
+    });
   } catch (error) {
     // Silent error handling
   }

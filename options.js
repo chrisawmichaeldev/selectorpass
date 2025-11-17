@@ -802,7 +802,8 @@ function createCredentialEditForm(domain, cred, index) {
         passwordInput.value = '';
         passwordInput.placeholder = 'Password (encrypted - enter new to change)';
       }
-    }).catch(() => {
+    }).catch((error) => {
+      console.error('SelectorPass: Error decrypting for edit:', error);
       passwordInput.value = '';
       passwordInput.placeholder = 'Password (encrypted - enter new to change)';
     });
@@ -863,11 +864,31 @@ function createCredentialForm(domain) {
   passwordLabel.setAttribute('for', `password-${domain}`);
   passwordLabel.style.display = 'none';
   
+  const passwordField = document.createElement('div');
+  passwordField.className = 'password-field';
+  
   const passwordInput = document.createElement('input');
   passwordInput.type = 'password';
   passwordInput.placeholder = 'Password';
   passwordInput.id = `password-${domain}`;
   passwordInput.name = `password-${domain}`;
+  
+  const showBtn = document.createElement('button');
+  showBtn.type = 'button';
+  showBtn.className = 'show-password-btn';
+  showBtn.textContent = '👁️';
+  showBtn.addEventListener('click', () => {
+    if (passwordInput.type === 'password') {
+      passwordInput.type = 'text';
+      showBtn.textContent = '🙈';
+    } else {
+      passwordInput.type = 'password';
+      showBtn.textContent = '👁️';
+    }
+  });
+  
+  passwordField.appendChild(passwordInput);
+  passwordField.appendChild(showBtn);
   
   // Encryption checkbox
   const encryptLabel = document.createElement('label');
@@ -890,7 +911,7 @@ function createCredentialForm(domain) {
   form.appendChild(usernameLabel);
   form.appendChild(usernameInput);
   form.appendChild(passwordLabel);
-  form.appendChild(passwordInput);
+  form.appendChild(passwordField);
   form.appendChild(encryptLabel);
   form.appendChild(addBtn);
   
@@ -980,8 +1001,9 @@ async function addCredential(domain) {
         return;
       }
       
-      // If master password not in memory, prompt for it
-      if (!(await isMasterPasswordSet())) {
+      // Only prompt for password if not already logged in
+      const isLoggedIn = await isMasterPasswordSet();
+      if (!isLoggedIn) {
         const masterPassword = await promptForMasterPassword();
         if (!masterPassword) {
           return; // User cancelled
@@ -1029,7 +1051,7 @@ async function addCredential(domain) {
  * @returns {Promise<string|null>} Master password or null if cancelled
  */
 function promptForMasterPassword() {
-  return promptForMasterPasswordWithMessage('Enter your master password to encrypt this credential:');
+  return promptForMasterPasswordWithMessage('Enter your master password to encrypt this credential:', 'Encrypt');
 }
 
 /**
@@ -1037,8 +1059,10 @@ function promptForMasterPassword() {
  * @returns {Promise<string|null>} Master password or null if cancelled
  */
 function promptForMasterPasswordDecrypt() {
-  return promptForMasterPasswordWithMessage('Enter your master password to remove encryption:');
+  return promptForMasterPasswordWithMessage('Enter your master password to remove encryption:', 'Remove Encryption');
 }
+
+
 
 /**
  * Prompt user for master password to login
@@ -1110,7 +1134,7 @@ function promptForLogin() {
  * @returns {Promise<string|null>} Master password or null if cancelled
  */
 function promptForMasterPasswordSetup() {
-  return promptForMasterPasswordWithMessage('Set up a master password to encrypt this credential:');
+  return promptForMasterPasswordWithMessage('Set up a master password to encrypt this credential:', 'Setup');
 }
 
 /**
@@ -1190,9 +1214,10 @@ function promptForNewMasterPassword() {
 /**
  * Generic prompt for master password with custom message
  * @param {string} message - Message to display
+ * @param {string} buttonText - Text for confirm button (default: 'OK')
  * @returns {Promise<string|null>} Master password or null if cancelled
  */
-function promptForMasterPasswordWithMessage(message) {
+function promptForMasterPasswordWithMessage(message, buttonText = 'OK') {
   return new Promise((resolve) => {
     const dialog = document.getElementById('confirmDialog');
     const messageEl = dialog?.querySelector('.dialog-message');
@@ -1215,7 +1240,7 @@ function promptForMasterPasswordWithMessage(message) {
     
     // Show both buttons
     cancelBtn.style.display = 'inline-block';
-    confirmBtn.textContent = 'Encrypt';
+    confirmBtn.textContent = buttonText;
     
     const handleConfirm = () => {
       const password = passwordInput.value.trim();
@@ -1636,7 +1661,8 @@ async function saveCredential(domain, index) {
     // If original credential was encrypted, keep it encrypted
     if (originalCredential.encrypted) {
       // If master password not in memory, prompt for it
-      if (!(await isMasterPasswordSet())) {
+      const isLoggedIn = await isMasterPasswordSet();
+      if (!isLoggedIn) {
         const masterPassword = await promptForMasterPassword();
         if (!masterPassword) {
           return; // User cancelled
@@ -1693,7 +1719,7 @@ function cancelCredential(domain, index) {
   }
 }
 
-function togglePassword(domain, index) {
+async function togglePassword(domain, index) {
   try {
     const credentialItem = document.querySelector(`[data-domain="${domain}"][data-index="${index}"]`)?.closest('.credential-item');
     if (!credentialItem) {
@@ -1709,6 +1735,32 @@ function togglePassword(domain, index) {
       return;
     }
     
+    // Check if this is an encrypted credential and we're logged out
+    const domains = await loadData();
+    const credential = domains[domain]?.credentials[index];
+    
+    if (credential?.encrypted && !passwordInput.value && passwordInput.type === 'password') {
+      // This is an encrypted credential with empty field - prompt for master password
+      const isLoggedIn = await isMasterPasswordSet();
+      if (!isLoggedIn) {
+        const masterPassword = await promptForMasterPasswordWithMessage('Enter your master password to view this encrypted password:', 'View Password');
+        if (!masterPassword) {
+          return; // User cancelled
+        }
+        
+        const isValid = await verifyMasterPassword(masterPassword);
+        if (!isValid) {
+          showAlertDialog('Incorrect master password');
+          return;
+        }
+        
+        await setMasterPassword(masterPassword, 'browser');
+        await updateSecurityUI(); // This will refresh the forms with decrypted values
+        return;
+      }
+    }
+    
+    // Normal toggle behavior
     if (passwordInput.type === 'password') {
       passwordInput.type = 'text';
       toggleBtn.textContent = '🙈';
@@ -1879,6 +1931,23 @@ function setupSecurityEventListeners() {
       changeMasterPasswordBtn.addEventListener('click', handleChangePassword);
     }
     
+    const resetMasterPasswordBtn = document.getElementById('resetMasterPasswordBtn');
+    if (resetMasterPasswordBtn) {
+      resetMasterPasswordBtn.addEventListener('click', handleResetMasterPassword);
+    }
+    
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) {
+      loginBtn.addEventListener('click', handleLogin);
+    }
+    
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', handleLogout);
+    }
+    
+
+    
     const setMasterPasswordBtn = document.getElementById('setMasterPasswordBtn');
     if (setMasterPasswordBtn) {
       setMasterPasswordBtn.addEventListener('click', handleSetMasterPassword);
@@ -1915,6 +1984,8 @@ async function updateSecurityUI() {
     const masterPasswordSection = document.getElementById('masterPasswordSection');
     const unlockSection = document.getElementById('unlockSection');
     const encryptedSection = document.getElementById('encryptedSection');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
     
     // Update login status indicator
     if (statusText) {
@@ -1932,11 +2003,25 @@ async function updateSecurityUI() {
       if (setupSection) setupSection.style.display = 'none';
       if (existingSection) existingSection.style.display = 'block';
       if (encryptedSection) encryptedSection.style.display = 'block';
+      
+      // Show login/logout buttons based on login state
+      if (isLoggedIn) {
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (logoutBtn) logoutBtn.style.display = 'inline-block';
+      } else {
+        if (loginBtn) loginBtn.style.display = 'inline-block';
+        if (logoutBtn) logoutBtn.style.display = 'none';
+      }
     } else {
       if (setupSection) setupSection.style.display = 'block';
       if (existingSection) existingSection.style.display = 'none';
       if (encryptedSection) encryptedSection.style.display = 'none';
+      if (loginBtn) loginBtn.style.display = 'none';
+      if (logoutBtn) logoutBtn.style.display = 'none';
     }
+    
+    // Refresh domains to update encrypted credential forms
+    await loadAndDisplayDomains();
 
   } catch (error) {
     console.error('SelectorPass: Error updating security UI:', error);
@@ -2034,6 +2119,41 @@ async function handleEncryptAll() {
 }
 
 /**
+ * Re-encrypt all credentials with new master password
+ */
+async function reencryptAllCredentials(newMasterPassword) {
+  try {
+    const domains = await loadData();
+    const oldMasterPassword = await getMasterPassword();
+    
+    if (!oldMasterPassword) {
+      throw new Error('Current master password not available');
+    }
+    
+    for (const [domain, config] of Object.entries(domains)) {
+      if (config.credentials) {
+        for (let i = 0; i < config.credentials.length; i++) {
+          const cred = config.credentials[i];
+          if (cred.encrypted) {
+            const decrypted = await decryptCredentialDirectly(cred, oldMasterPassword);
+            const reencrypted = await encryptData(decrypted.password, newMasterPassword);
+            config.credentials[i] = {
+              username: cred.username,
+              password: reencrypted,
+              encrypted: true
+            };
+          }
+        }
+      }
+    }
+    
+    await saveData(domains);
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
  * Handle change master password
  */
 async function handleChangePassword() {
@@ -2060,6 +2180,154 @@ async function handleChangePassword() {
   } catch (error) {
     console.error('SelectorPass: Error changing master password:', error);
     showAlertDialog('Error changing master password. Please try again.');
+  }
+}
+
+/**
+ * Re-encrypt all credentials with new master password
+ * @param {string} newMasterPassword - New master password
+ */
+async function reencryptAllCredentials(newMasterPassword) {
+  try {
+    const domains = await loadData();
+    const oldMasterPassword = await getMasterPassword();
+    
+    if (!oldMasterPassword) {
+      throw new Error('Current master password not available');
+    }
+    
+    // Process each domain
+    for (const [domain, config] of Object.entries(domains)) {
+      if (config.credentials) {
+        // Process each credential
+        for (let i = 0; i < config.credentials.length; i++) {
+          const cred = config.credentials[i];
+          if (cred.encrypted) {
+            // Decrypt with old password
+            const decrypted = await decryptCredentialDirectly(cred, oldMasterPassword);
+            // Encrypt with new password
+            const reencrypted = await encryptData(decrypted.password, newMasterPassword);
+            // Update credential
+            config.credentials[i] = {
+              username: cred.username,
+              password: reencrypted,
+              encrypted: true
+            };
+          }
+        }
+      }
+    }
+    
+    // Save updated domains
+    await saveData(domains);
+  } catch (error) {
+    console.error('SelectorPass: Error re-encrypting credentials:', error);
+    throw error;
+  }
+}
+
+/**
+ * Handle reset master password - removes all encrypted credentials
+ */
+async function handleResetMasterPassword() {
+  try {
+    const confirmed = await showResetMasterPasswordDialog();
+    if (!confirmed) {
+      return; // User cancelled
+    }
+    
+    // Remove all encrypted credentials and reset master password
+    await resetMasterPasswordAndCredentials();
+    
+    await updateSecurityUI();
+    await loadAndDisplayDomains();
+    showAlertDialog('Master password reset successfully. All encrypted credentials have been removed.');
+  } catch (error) {
+    console.error('SelectorPass: Error resetting master password:', error);
+    showAlertDialog('Error resetting master password. Please try again.');
+  }
+}
+
+/**
+ * Show reset master password confirmation dialog
+ * @returns {Promise<boolean>} True if confirmed
+ */
+function showResetMasterPasswordDialog() {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('confirmDialog');
+    const messageEl = dialog?.querySelector('.dialog-message');
+    const confirmBtn = document.getElementById('dialogConfirm');
+    const cancelBtn = document.getElementById('dialogCancel');
+    
+    if (!dialog || !messageEl || !confirmBtn || !cancelBtn) {
+      resolve(false);
+      return;
+    }
+    
+    messageEl.innerHTML = `
+      <strong>⚠️ Reset Master Password</strong><br><br>
+      This will permanently delete ALL encrypted credentials.<br>
+      Unencrypted credentials will remain safe.<br><br>
+      This action cannot be undone.
+    `;
+    
+    cancelBtn.style.display = 'inline-block';
+    confirmBtn.textContent = 'Reset Master Password';
+    confirmBtn.style.background = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
+    
+    const handleConfirm = () => {
+      dialog.close();
+      cleanup();
+      resolve(true);
+    };
+    
+    const handleCancel = () => {
+      dialog.close();
+      cleanup();
+      resolve(false);
+    };
+    
+    const cleanup = () => {
+      confirmBtn.removeEventListener('click', handleConfirm);
+      cancelBtn.removeEventListener('click', handleCancel);
+      confirmBtn.textContent = 'Delete';
+      confirmBtn.style.background = '';
+      messageEl.innerHTML = '';
+    };
+    
+    confirmBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', handleCancel);
+    
+    dialog.showModal();
+  });
+}
+
+/**
+ * Reset master password and remove all encrypted credentials
+ */
+async function resetMasterPasswordAndCredentials() {
+  try {
+    // Load current data
+    const domains = await loadData();
+    
+    // Remove all encrypted credentials from each domain
+    Object.keys(domains).forEach(domain => {
+      if (domains[domain].credentials) {
+        domains[domain].credentials = domains[domain].credentials.filter(cred => !cred.encrypted);
+      }
+    });
+    
+    // Save updated domains
+    await saveData(domains);
+    
+    // Clear security settings
+    await chrome.storage.local.remove(['securitySettings']);
+    
+    // Clear master password from memory
+    await clearMasterPassword();
+  } catch (error) {
+    console.error('SelectorPass: Error resetting master password and credentials:', error);
+    throw error;
   }
 }
 
@@ -2145,7 +2413,8 @@ async function encryptSingleCredential(domain, index) {
 async function decryptSingleCredential(domain, index) {
   try {
     // Check if master password is available
-    if (!await isMasterPasswordSet()) {
+    const isLoggedIn = await isMasterPasswordSet();
+    if (!isLoggedIn) {
       showAlertDialog('Please login first to remove encryption.');
       return;
     }
@@ -2229,11 +2498,54 @@ async function decryptCredentialForEdit(credential) {
       return null;
     }
     
-    return await decryptCredential(credential);
+    const decrypted = await decryptCredential(credential);
+    return decrypted;
   } catch (error) {
+    console.error('SelectorPass: Error in decryptCredentialForEdit:', error);
     return null;
   }
 }
+/**
+ * Handle login button click
+ */
+async function handleLogin() {
+  try {
+    const masterPassword = await promptForLogin();
+    if (!masterPassword) {
+      return; // User cancelled
+    }
+    
+    const isValid = await verifyMasterPassword(masterPassword);
+    if (!isValid) {
+      showAlertDialog('Incorrect master password');
+      return;
+    }
+    
+    await setMasterPassword(masterPassword, 'browser');
+    await updateSecurityUI();
+  } catch (error) {
+    console.error('SelectorPass: Error handling login:', error);
+    showAlertDialog('Error logging in. Please try again.');
+  }
+}
+
+/**
+ * Handle logout button click
+ */
+async function handleLogout() {
+  try {
+    const confirmed = await showConfirmationDialog('Are you sure you want to logout? You will need to re-enter your master password to access encrypted credentials.');
+    if (!confirmed) {
+      return;
+    }
+    
+    await clearMasterPassword();
+    await updateSecurityUI();
+  } catch (error) {
+    console.error('SelectorPass: Error handling logout:', error);
+  }
+}
+
 /**
  * Setup connection to background script for login status updates
  */

@@ -53,7 +53,7 @@
         <div>
           <div class="security-info">
             <p>Manage your master password for encrypted credentials.</p>
-            <p><strong>Encryption:</strong> Uses AES-256-GCM with PBKDF2 key derivation for military-grade security.</p>
+            <p><strong>Encryption:</strong> Uses AES-256-GCM with PBKDF2 key derivation for enterprise-grade security.</p>
             <div id="loginStatus" class="login-status">
               <span class="status-indicator" id="statusText">🚫 Logged out</span>
             </div>
@@ -65,7 +65,10 @@
           
           <div id="existingMasterPasswordSection" class="existing-section" style="display: none;">
             <div class="button-row">
+              <button id="loginBtn" class="primary-btn" style="display: none;">Login</button>
+              <button id="logoutBtn" class="secondary-btn" style="display: none;">Logout</button>
               <button id="changeMasterPasswordBtn" class="secondary-btn">Change Master Password</button>
+              <button id="resetMasterPasswordBtn" class="danger-btn">Reset Master Password</button>
             </div>
           </div>
           
