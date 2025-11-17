@@ -1,39 +1,15 @@
-import { expect, chromium, BrowserContext, Page } from '@playwright/test';
+import { expect, BrowserContext, Page } from '@playwright/test';
 import { test } from './fixtures/basePage';
-import path from 'path';
+import { setupExtensionContext } from './utils/extension-setup';
 
 test.describe('CRITICAL: Core Functionality', () => {
   let context: BrowserContext;
   let page: Page;
 
   test.beforeAll(async () => {
-    const extensionPath = path.resolve(__dirname, '../..');
-    console.log('Extension path:', extensionPath);
-    
-    context = await chromium.launchPersistentContext('', {
-      headless: false,
-      viewport: { width: 1932, height: 2053 },
-      args: [
-        `--disable-extensions-except=${extensionPath}`,
-        `--load-extension=${extensionPath}`
-      ],
-    });
-    
-    page = await context.newPage();
-    
-    // Wait for service worker with retries
-    let attempts = 0;
-    while (attempts < 10) {
-      await page.waitForTimeout(500);
-      const serviceWorkers = context.serviceWorkers();
-      if (serviceWorkers.length > 0) {
-        console.log('Extension service worker loaded');
-        return;
-      }
-      attempts++;
-    }
-    
-    throw new Error('Extension service worker failed to load');
+    const result = await setupExtensionContext();
+    context = result.context;
+    page = result.page;
   }, 10000);
 
   test.afterAll(async () => {
