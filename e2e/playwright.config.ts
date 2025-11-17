@@ -8,10 +8,10 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Single worker for extension testing
   reporter: 'html',
-  timeout: 120000, // Extended timeout for debugging
+  timeout: 10000, // Fast timeout
   use: {
     headless: false, // Extensions require headed mode
-    viewport: { width: 1280, height: 720 },
+    viewport: { width: 1932, height: 2053 },
     ignoreHTTPSErrors: true,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -30,6 +30,6 @@ export default defineConfig({
     command: 'python3 -m http.server 8080',
     port: 8080,
     cwd: path.resolve(__dirname, '..'),
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
   },
 });

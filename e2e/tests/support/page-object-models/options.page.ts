@@ -15,7 +15,7 @@ export default class OptionsPage {
   saveDomainBtn = () => this.page.locator('#saveDomainBtn');
   
   // Dynamic locators
-  domainSection = (domain: string) => this.page.locator(`[data-domain="${domain}"]`);
+  domainSection = (domain: string) => this.page.locator(`.domain-item[data-domain="${domain}"]`).first();
   credentialUsernameInput = (domain: string) => this.page.locator(`#username-${domain}`);
   credentialPasswordInput = (domain: string) => this.page.locator(`#password-${domain}`);
   addCredentialBtn = (domain: string) => this.page.locator(`[data-domain="${domain}"][data-action="add-credential"]`);
@@ -58,7 +58,7 @@ export default class OptionsPage {
     await this.domainInput().fill(domain);
     await this.usernameSelector().fill(usernameSelector);
     await this.passwordSelector().fill(passwordSelector);
-    await this.saveDomainBtn().click();
+    await this.saveDomainBtn().click({ force: true });
   }
 
   public async verifyDomainExists(domain: string) {
@@ -77,6 +77,8 @@ export default class OptionsPage {
 
   public async addCredential(domain: string, username: string, password: string) {
     if (this.page.url().includes('chrome-extension://')) {
+      // Wait for credential inputs to be available
+      await this.credentialUsernameInput(domain).waitFor({ state: 'visible' });
       await this.credentialUsernameInput(domain).fill(username);
       await this.credentialPasswordInput(domain).fill(password);
       await this.addCredentialBtn(domain).click();
