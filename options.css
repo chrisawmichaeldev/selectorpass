@@ -991,3 +991,76 @@ select:focus {
 .login-status.logged-out .status-indicator {
   color: #dc2626;
 }
+
+/* Footer Styles */
+.page-footer {
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+  padding: 20px 40px;
+  margin-top: 0;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 900px;
+  margin: 0 auto;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.footer-text {
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.footer-links {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.github-link,
+.demo-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7280;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.github-link:hover {
+  color: #374151;
+  background: #f3f4f6;
+  transform: translateY(-1px);
+}
+
+.demo-link:hover {
+  color: #dc2626;
+  background: #fef2f2;
+  transform: translateY(-1px);
+}
+
+.github-icon,
+.demo-icon {
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .footer-links {
+    justify-content: center;
+  }
+}

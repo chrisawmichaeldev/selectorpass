@@ -13,9 +13,12 @@
 - **Domain-specific configuration**: Set CSS selectors once per domain
 - **Multiple credentials per domain**: Store multiple accounts for the same site
 - **Local-only storage**: Complete privacy with no cloud sync
-- **Optional AES-256 encryption**: Military-grade security for sensitive credentials
-- **Session management**: Master password remembered across contexts until browser close
+- **Optional AES-256-GCM encryption**: Military-grade security with authenticated encryption
+- **PBKDF2 key derivation**: 100,000 iterations for secure key generation from master password
 - **Per-credential encryption**: Choose which credentials to encrypt individually
+- **Stateless security**: Master password required for each encryption operation (maximum security)
+- **Cross-context sync**: Login status synchronized between popup and options page
+- **Direct password prompting**: Enter master password directly in popup when needed
 - **Precision targeting**: Manual CSS selectors when auto-detection fails
 - **Smart domain detection**: Auto-populates domain from current tab
 - **Auto-sort recent**: Recently used credentials move to top
@@ -58,16 +61,18 @@
 1. Navigate to a configured website
 2. Click the extension icon
 3. Choose from your saved credentials (🔐 indicates encrypted)
-4. Enter master password if prompted for encrypted credentials
+4. Enter master password if prompted for encrypted credentials (🔐 icon indicates encryption)
 5. Click "Fill" to auto-fill the form
 6. Popup closes automatically after successful filling
 
 ### Manage Your Data
 
 - **Edit credentials**: Click "Edit" button to modify saved accounts
-- **Encrypt/decrypt**: Toggle encryption per credential with 🔐/🔓 buttons
-- **Master password**: Set up optional master password for encryption
-- **Session login**: Login once, access encrypted credentials until browser close
+- **Setup encryption**: Configure master password (8+ characters) in Security section
+- **Encrypt/decrypt**: Toggle encryption per credential with 🔐/🔓 buttons  
+- **Change master password**: Update master password while preserving encrypted credentials
+- **Direct popup authentication**: Enter master password directly when filling encrypted credentials
+- **Visual indicators**: 🔐 icons show encrypted credentials, 🔓/🚫 show login status
 - **Delete safely**: Confirmation dialogs prevent accidental deletion
 - **Update selectors**: Re-save domain with new CSS selectors (preserves credentials)
 - **Organize domains**: Collapse/expand sections, state persists across sessions
@@ -115,7 +120,7 @@ The extension uses a unified data structure supporting both encrypted and unencr
 - **Invalid selectors**: Extension saves any selectors you enter (validation is visual)
 - **Missing credentials**: Ensure you're on the correct domain and have saved credentials
 - **Encrypted credentials not filling**: Ensure you're logged in with master password
-- **Master password prompt**: Enter password once per browser session for encrypted credentials
+- **Master password prompt**: Enter password for each encrypted credential operation (stateless security)
 - **Options not updating**: Real-time sync should work automatically via port connections
 
 ## Testing
