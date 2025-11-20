@@ -19,7 +19,7 @@ Then I should see "SelectorPass" extension listed
 And the extension should be enabled
 And the extension icon should appear in the toolbar
 ```
-- [x] Test needed
+- [ ] Test needed
 
 ### Scenario: Extension popup opens
 ```gherkin
@@ -29,7 +29,7 @@ Then the popup should open
 And I should see "No configuration found for this domain." message
 And I should see "Settings" button
 ```
-- [x] **AUTOMATED** (critical.spec.ts)
+- [ ] Test needed
 
 ### Scenario: Add domain configuration
 ```gherkin
@@ -41,7 +41,17 @@ And I click "Save Domain" button
 Then the domain should appear in the domains list
 And the form should be cleared
 ```
-- [x] **AUTOMATED** (critical.spec.ts)
+- [ ] Test needed
+
+### Scenario: Extension options page loads
+```gherkin
+Given the SelectorPass extension is installed
+When I navigate to the extension options page
+Then the page should load successfully
+And I should see "SelectorPass" title
+And I should see the domain configuration sections
+```
+- [ ] Test needed
 
 ### Scenario: Add first credential to domain
 ```gherkin
@@ -52,12 +62,12 @@ And I click "Add" button
 Then the credential should appear in the credentials list
 And the form should be cleared
 ```
-- [x] **AUTOMATED** (critical.spec.ts)
+- [ ] Test needed
 
 ### Scenario: Fill form with single credential
 ```gherkin
 Given I have configured "chrisawmichaeldev.github.io" with selectors "#username" and "#password"
-And I have one credential "demouser" / "demouser"
+And I have one credential "demouser" / "demopass"
 When I navigate to https://chrisawmichaeldev.github.io/selectorpass/demo.html
 And I click the SelectorPass extension icon
 Then I should see the credential "demouser" listed
@@ -66,7 +76,7 @@ Then the username field should contain "demouser"
 And the password field should contain "demopass"
 And the popup should close
 ```
-- [x] Test needed
+- [ ] Test needed
 
 ---
 
@@ -1068,3 +1078,28 @@ Then the popup should show 🚫 status
 And encrypted credentials should require password prompt
 ```
 - [ ] Test needed
+
+## Duplicate Username Credential Management
+
+**Test Case**: Verify that editing credentials with duplicate usernames works correctly
+
+**Steps**:
+1. Configure domain (e.g., example.com with #username, #password)
+2. Add first credential: username="john", password="pass1"
+3. Add second credential: username="john", password="pass2"
+4. Verify both credentials appear in the list
+5. Click "Edit" on the FIRST credential (should show "pass1")
+6. Change password to "newpass1" and save
+7. Click "Edit" on the SECOND credential (should show "pass2")
+8. Verify the second credential still shows "pass2" (not "newpass1")
+
+**Expected Result**: Each credential maintains its own password independently
+**Actual Result**: [To be tested]
+**Status**: ⚠️ MANUAL - Potential bug reported
+
+**Additional Test Steps**:
+9. Try reordering credentials (drag/drop) between steps 6-8
+10. Refresh the options page and repeat edit test
+11. Test with 3+ credentials with same username
+
+**Root Cause Analysis**: Extension uses array index to identify credentials for editing. If indices shift due to reordering or page refresh, wrong credential may be edited.

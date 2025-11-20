@@ -83,13 +83,72 @@ function handleUrlParameters() {
 // ============================================================================
 
 /**
+ * Generate unique ID for credential
+ * @param {string} username - Username
+ * @param {number} index - Array index for backwards compatibility
+ * @returns {string} Unique credential ID
+ */
+function generateCredentialId(username, index) {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substr(2, 9);
+  return `${username}_${index}_${timestamp}_${random}`;
+}
+
+/**
+ * Migrate existing credentials to include unique IDs
+ * @param {Object} domains - Domain configurations
+ * @returns {Object} Migrated domains with credential IDs
+ */
+function migrateCredentials(domains) {
+  Object.keys(domains).forEach(domain => {
+    if (domains[domain].credentials) {
+      domains[domain].credentials.forEach((cred, index) => {
+        if (!cred.id) {
+          cred.id = generateCredentialId(cred.username || 'user', index);
+        }
+      });
+    }
+  });
+  return domains;
+}
+
+/**
+ * Find credential index by ID with fallback to array index
+ * @param {Array} credentials - Array of credentials
+ * @param {string} credentialId - Credential ID or index
+ * @returns {number} Index of credential or -1 if not found
+ */
+function findCredentialIndex(credentials, credentialId) {
+  // Try to find by ID first (new method)
+  let index = credentials.findIndex(cred => cred.id === credentialId);
+  
+  // Fallback to array index (old method) if no ID found
+  if (index === -1 && !isNaN(credentialId)) {
+    index = parseInt(credentialId);
+    if (index >= 0 && index < credentials.length) {
+      return index;
+    }
+  }
+  
+  return index;
+}
+
+/**
  * Load all domain configurations from Chrome storage
  * @returns {Promise<Object>} Object containing all domain configurations
  */
 async function loadData() {
   try {
-    const result = await chrome.storage.local.get(['domains']);
-    return result.domains || {};
+    const result = await chrome.storage.local.get(['domains', 'migrated']);
+    let domains = result.domains || {};
+    
+    // Only migrate once for existing installations
+    if (!result.migrated && Object.keys(domains).length > 0) {
+      domains = migrateCredentials(domains);
+      await chrome.storage.local.set({ domains, migrated: true });
+    }
+    
+    return domains;
   } catch (error) {
     return {};
   }
@@ -320,17 +379,17 @@ async function restoreDomainStates() {
 // Action handlers map for better performance and maintainability
 const actionHandlers = new Map([
   ['delete-domain', (domain) => deleteDomain(domain)],
-  ['delete-credential', (domain, button) => deleteCredential(domain, parseInt(button.dataset.index))],
+  ['delete-credential', (domain, button) => deleteCredential(domain, button.dataset.credentialId || button.dataset.index)],
   ['add-credential', (domain) => addCredential(domain)],
   ['edit-domain', (domain) => editDomain(domain)],
   ['save-domain', (domain) => saveDomainEdit(domain)],
   ['cancel-edit', (domain) => cancelDomainEdit(domain)],
-  ['edit-credential', (domain, button) => editCredential(domain, parseInt(button.dataset.index))],
-  ['save-credential', (domain, button) => saveCredential(domain, parseInt(button.dataset.index))],
-  ['cancel-credential', (domain, button) => cancelCredential(domain, parseInt(button.dataset.index))],
-  ['toggle-password', (domain, button) => togglePassword(domain, parseInt(button.dataset.index))],
-  ['encrypt-credential', (domain, button) => encryptSingleCredential(domain, parseInt(button.dataset.index))],
-  ['decrypt-credential', (domain, button) => decryptSingleCredential(domain, parseInt(button.dataset.index))]
+  ['edit-credential', (domain, button) => editCredential(domain, button.dataset.credentialId || button.dataset.index)],
+  ['save-credential', (domain, button) => saveCredential(domain, button.dataset.credentialId || button.dataset.index)],
+  ['cancel-credential', (domain, button) => cancelCredential(domain, button.dataset.credentialId || button.dataset.index)],
+  ['toggle-password', (domain, button) => togglePassword(domain, button.dataset.credentialId || button.dataset.index)],
+  ['encrypt-credential', (domain, button) => encryptSingleCredential(domain, button.dataset.credentialId || button.dataset.index)],
+  ['decrypt-credential', (domain, button) => decryptSingleCredential(domain, button.dataset.credentialId || button.dataset.index)]
 ]);
 
 /**
@@ -712,6 +771,7 @@ function createCredentialItem(domain, cred, index) {
   item.draggable = true;
   item.dataset.domain = domain;
   item.dataset.index = index;
+  item.dataset.credentialId = cred.id || `legacy_${index}`;
   
   // Display mode
   const display = document.createElement('div');
@@ -991,7 +1051,11 @@ async function addCredential(domain) {
     const encryptCheckbox = document.getElementById(`encrypt-${domain}`);
     const shouldEncrypt = encryptCheckbox?.checked || false;
     
-    let credentialToSave = { username, password };
+    let credentialToSave = { 
+      id: generateCredentialId(username, domains[domain].credentials.length),
+      username, 
+      password 
+    };
     
     if (shouldEncrypt) {
       const settings = await getSecuritySettings();
@@ -1414,12 +1478,18 @@ function showConfirmationDialog(message) {
   });
 }
 
-async function deleteCredential(domain, index) {
+async function deleteCredential(domain, credentialId) {
   try {
     const domains = await loadData();
     
-    if (!domains[domain] || !domains[domain].credentials || !domains[domain].credentials[index]) {
-      console.error('SelectorPass: Invalid domain or credential index');
+    if (!domains[domain] || !domains[domain].credentials) {
+      console.error('SelectorPass: Invalid domain');
+      return;
+    }
+    
+    const index = findCredentialIndex(domains[domain].credentials, credentialId);
+    if (index === -1) {
+      console.error('SelectorPass: Credential not found');
       return;
     }
     
@@ -1616,9 +1686,9 @@ function editCredential(domain, index) {
   }
 }
 
-async function saveCredential(domain, index) {
+async function saveCredential(domain, credentialId) {
   try {
-    const credentialItem = document.querySelector(`[data-domain="${domain}"][data-index="${index}"]`)?.closest('.credential-item');
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
     if (!credentialItem) {
       console.error('SelectorPass: Credential item not found');
       return;
@@ -1647,8 +1717,14 @@ async function saveCredential(domain, index) {
     
     const domains = await loadData();
     
-    if (!domains[domain] || !domains[domain].credentials || !domains[domain].credentials[index]) {
-      console.error('SelectorPass: Invalid domain or credential index');
+    if (!domains[domain] || !domains[domain].credentials) {
+      console.error('SelectorPass: Invalid domain');
+      return;
+    }
+    
+    const index = findCredentialIndex(domains[domain].credentials, credentialId);
+    if (index === -1) {
+      console.error('SelectorPass: Credential not found');
       return;
     }
     
