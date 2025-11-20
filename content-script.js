@@ -5,6 +5,12 @@
  * using CSS selectors. It operates in an isolated environment to avoid
  * conflicts with page scripts and maintains security boundaries.
  * 
+ * Key Features:
+ * - CSS selector-based form field targeting
+ * - Framework-compatible DOM event dispatching
+ * - Secure message validation and handling
+ * - Graceful error handling without page interference
+ * 
  * Security Features:
  * - Encapsulated in IIFE to prevent namespace pollution
  * - Validates message sender to prevent unauthorized access
@@ -14,10 +20,12 @@
  * @fileoverview Content script for SelectorPass extension
  * @author SelectorPass Team
  * @version 1.1.1
+ * @since 1.0.0
  */
 
+'use strict';
+
 (() => {
-  'use strict';
   
   // ============================================================================
   // PRIVATE FUNCTIONS
@@ -42,52 +50,74 @@
    *   usernameSelector: '#email',
    *   passwordSelector: '#password',
    *   username: 'user@example.com',
-   *   password: 'secretpass123'
+   *   password: '[REDACTED]'
    * });
    */
   function fillCredentials({ usernameSelector, passwordSelector, username, password }) {
     try {
-      // Validate all required parameters are provided
-      if (!usernameSelector || !passwordSelector || !username || !password) {
+      // Validate all parameters using functional approach
+      const params = [usernameSelector, passwordSelector, username, password];
+      const isValidType = params.every(param => typeof param === 'string');
+      const hasContent = params.every(param => param?.trim());
+      
+      if (!isValidType || !hasContent) {
         return false;
       }
       
-      // Locate form fields using provided CSS selectors
-      const usernameField = document.querySelector(usernameSelector);
-      const passwordField = document.querySelector(passwordSelector);
+      // Query selectors safely
+      const fields = [
+        { selector: usernameSelector, value: username },
+        { selector: passwordSelector, value: password }
+      ].map(({ selector, value }) => {
+        try {
+          const element = document.querySelector(selector);
+          return element && ['INPUT', 'TEXTAREA'].includes(element.tagName) 
+            ? { element, value } 
+            : null;
+        } catch {
+          return null;
+        }
+      }).filter(Boolean);
       
-      let fieldsFound = 0;
+      // Fill all valid fields
+      const filledCount = fields.reduce((count, { element, value }) => {
+        try {
+          element.value = value;
+          element.dispatchEvent(new Event('input', { bubbles: true }));
+          element.dispatchEvent(new Event('change', { bubbles: true }));
+          return count + 1;
+        } catch {
+          return count;
+        }
+      }, 0);
       
-      // Fill username field if found
-      if (usernameField) {
-        usernameField.value = username;
-        
-        // Dispatch DOM events to trigger form validation and notify JavaScript frameworks
-        // 'input' event: Fired when the value changes (for real-time validation)
-        usernameField.dispatchEvent(new Event('input', { bubbles: true }));
-        // 'change' event: Fired when the field loses focus (for form frameworks)
-        usernameField.dispatchEvent(new Event('change', { bubbles: true }));
-        fieldsFound++;
-      }
-      
-      // Fill password field if found
-      if (passwordField) {
-        passwordField.value = password;
-        
-        // Dispatch DOM events to trigger form validation and notify JavaScript frameworks
-        passwordField.dispatchEvent(new Event('input', { bubbles: true }));
-        passwordField.dispatchEvent(new Event('change', { bubbles: true }));
-        fieldsFound++;
-      }
-      
-      // Return true if at least one field was successfully filled
-      return fieldsFound > 0;
+      return filledCount > 0;
       
     } catch (error) {
       return false;
     }
   }
   
+  // ============================================================================
+  // ACTION HANDLERS
+  // ============================================================================
+
+  /**
+   * Action handlers map for message processing
+   * @type {Map<string, Function>}
+   * @private
+   */
+  const actionHandlers = new Map([
+    ['fillCredentials', (message, safeResponse) => {
+      try {
+        const success = fillCredentials(message);
+        safeResponse({ success });
+      } catch (fillError) {
+        safeResponse({ success: false, error: 'Form filling failed' });
+      }
+    }]
+  ]);
+
   /**
    * Handle messages from the extension popup
    * 
@@ -108,41 +138,42 @@
    *   usernameSelector: '#email',
    *   passwordSelector: '#password',
    *   username: 'user@example.com',
-   *   password: 'secretpass123'
+   *   password: '[REDACTED]'
    * }
    */
   function handleMessage(message, sender, sendResponse) {
+    // Ensure sendResponse is always called
+    const safeResponse = (response) => {
+      try {
+        typeof sendResponse === 'function' && sendResponse(response);
+      } catch (responseError) {
+        // Silent error - response channel may be closed
+      }
+    };
+
     try {
-      // Security check: Validate message and sender exist
-      if (!message || !sender) {
-        sendResponse({ success: false, error: 'Invalid message or sender' });
+      // Validation pipeline using short-circuit evaluation
+      const validationErrors = [
+        (!message || typeof message !== 'object' || !sender || typeof sender !== 'object') && 'Invalid message or sender',
+        (!sender.id || typeof sender.id !== 'string' || sender.id !== chrome.runtime.id) && 'Unauthorized sender',
+        (typeof message.action !== 'string') && 'Invalid action type'
+      ].filter(Boolean);
+      
+      if (validationErrors.length > 0) {
+        safeResponse({ success: false, error: validationErrors[0] });
         return;
       }
       
-      // Security check: Ensure message is from this extension only
-      if (!sender.id || sender.id !== chrome.runtime.id) {
-        sendResponse({ success: false, error: 'Invalid sender' });
-        return;
-      }
+      // Get and execute handler
+      const handler = actionHandlers.get(message.action);
       
-      // Process supported actions
-      if (message.action === 'fillCredentials') {
-        try {
-          const success = fillCredentials(message);
-          sendResponse({ success });
-        } catch (error) {
-          sendResponse({ success: false, error: 'Failed to fill credentials' });
-        }
+      if (handler) {
+        handler(message, safeResponse);
       } else {
-        // Reject unsupported actions
-        sendResponse({ success: false, error: 'Unknown action' });
+        safeResponse({ success: false, error: 'Unsupported action' });
       }
     } catch (error) {
-      try {
-        sendResponse({ success: false, error: 'Message handling failed' });
-      } catch (responseError) {
-        // Silent error handling
-      }
+      safeResponse({ success: false, error: 'Message processing failed' });
     }
   }
   
@@ -158,15 +189,21 @@
    */
   function init() {
     try {
-      // Register message listener to handle form filling requests
-      chrome.runtime.onMessage.addListener(handleMessage);
-      
+      // Use short-circuit evaluation for Chrome API check
+      typeof chrome !== 'undefined' && 
+      chrome.runtime?.onMessage?.addListener?.(handleMessage);
     } catch (error) {
       // Silent error handling - content script should not interfere with page
     }
   }
   
-  // Initialize the content script immediately when loaded
-  init();
+  // Initialize using functional approach - no branching
+  const initStrategies = {
+    loading: () => document.addEventListener('DOMContentLoaded', init),
+    interactive: init,
+    complete: init
+  };
+  
+  (initStrategies[document.readyState] || init)();
   
 })();

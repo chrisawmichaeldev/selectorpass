@@ -4,13 +4,25 @@
  * This service worker manages master password sessions and facilitates
  * real-time communication between popup and options contexts.
  * 
- * Security Note: Master password is stored in memory only and never
- * persisted to disk or chrome.storage. It's cleared on browser close.
+ * Key Responsibilities:
+ * - Master password session management
+ * - Cross-context communication via ports
+ * - Login status broadcasting
+ * - Automatic session cleanup
+ * 
+ * Security Features:
+ * - Master password stored in memory only (never persisted)
+ * - Automatic cleanup on browser close/suspend
+ * - Secure port-based communication
+ * - No sensitive data logging
  * 
  * @fileoverview Background service worker for SelectorPass extension
  * @author SelectorPass Team
  * @version 1.1.1
+ * @since 1.0.0
  */
+
+'use strict';
 
 // ============================================================================
 // SESSION STORAGE
@@ -48,11 +60,47 @@ chrome.runtime.onConnect.addListener((port) => {
     connectedPorts.add(port);
     
     // Clean up when port disconnects
-    port.onDisconnect.addListener(() => {
-      connectedPorts.delete(port);
-    });
+    port.onDisconnect.addListener(() => connectedPorts.delete(port));
   }
 });
+
+// ============================================================================
+// ACTION HANDLERS
+// ============================================================================
+
+/**
+ * Action handlers map for message processing
+ * 
+ * Each handler receives (request, sendResponse) parameters:
+ * - setMasterPassword: Store master password in memory and broadcast login status
+ * - getMasterPassword: Retrieve current master password from memory
+ * - isMasterPasswordSet: Check if master password is currently available
+ * - clearMasterPassword: Remove master password from memory and broadcast logout
+ * 
+ * @type {Map<string, Function>}
+ * @private
+ */
+const actionHandlers = new Map([
+  ['setMasterPassword', (request, sendResponse) => {
+    if (typeof request.password !== 'string') {
+      sendResponse({ success: false, error: 'Invalid password' });
+      return;
+    }
+    masterPassword = request.password;
+    broadcastLoginStatusChange(true);
+    sendResponse({ success: true });
+  }],
+  
+  ['getMasterPassword', (request, sendResponse) => sendResponse({ masterPassword })],
+  
+  ['isMasterPasswordSet', (request, sendResponse) => sendResponse({ isSet: masterPassword !== null })],
+  
+  ['clearMasterPassword', (request, sendResponse) => {
+    masterPassword = null;
+    broadcastLoginStatusChange(false);
+    sendResponse({ success: true });
+  }]
+]);
 
 /**
  * Handle messages from popup and options contexts
@@ -72,40 +120,22 @@ chrome.runtime.onConnect.addListener((port) => {
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   try {
-    switch (request.action) {
-      case 'setMasterPassword':
-        // Store master password in memory for current browser session
-        masterPassword = request.password;
-        
-        // Notify all connected options pages of login status change
-        broadcastLoginStatusChange(true);
-        sendResponse({ success: true });
-        break;
-        
-      case 'getMasterPassword':
-        // Return master password from memory (null if not set)
-        sendResponse({ masterPassword });
-        break;
-        
-      case 'isMasterPasswordSet':
-        // Check if master password is available in memory
-        sendResponse({ isSet: masterPassword !== null });
-        break;
-        
-      case 'clearMasterPassword':
-        // Clear master password from memory
-        masterPassword = null;
-        
-        // Notify all connected options pages of logout
-        broadcastLoginStatusChange(false);
-        sendResponse({ success: true });
-        break;
-        
-      default:
-        sendResponse({ success: true });
+    // Validate request object
+    if (!request || typeof request.action !== 'string') {
+      sendResponse({ success: false, error: 'Invalid request' });
+      return true;
+    }
+
+    // Get handler for the requested action
+    const handler = actionHandlers.get(request.action);
+    
+    if (handler) {
+      handler(request, sendResponse);
+    } else {
+      sendResponse({ success: false, error: 'Unknown action' });
     }
   } catch (error) {
-    sendResponse({ error: error.message });
+    sendResponse({ success: false, error: error.message || 'Unknown error' });
   }
   
   return true;
@@ -122,7 +152,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * Called automatically by Chrome when service worker is being suspended.
  */
 chrome.runtime.onSuspend.addListener(() => {
-  masterPassword = null;
+  try {
+    masterPassword = null;
+    connectedPorts.clear();
+  } catch (error) {
+    // Silent cleanup - service worker is shutting down
+  }
 });
 /**
  * Broadcast login status change to all connected options pages
@@ -134,13 +169,20 @@ chrome.runtime.onSuspend.addListener(() => {
  * @private
  */
 function broadcastLoginStatusChange(isLoggedIn) {
+  if (typeof isLoggedIn !== 'boolean') {
+    return;
+  }
+
+  const disconnectedPorts = new Set();
+  
   connectedPorts.forEach(port => {
     try {
-      // Send login status update to connected options page
       port.postMessage({ action: 'loginStatusChanged', isLoggedIn });
     } catch (error) {
-      // Port is disconnected, remove from set
-      connectedPorts.delete(port);
+      disconnectedPorts.add(port);
     }
   });
+  
+  // Clean up disconnected ports
+  disconnectedPorts.forEach(port => connectedPorts.delete(port));
 }

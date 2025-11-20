@@ -21,10 +21,12 @@
  * @fileoverview Popup interface for SelectorPass extension
  * @author SelectorPass Team
  * @version 1.1.1
+ * @since 1.0.0
  */
 
+'use strict';
+
 (() => {
-  'use strict';
 
 // ============================================================================
 // INITIALIZATION
@@ -321,7 +323,15 @@ function createCredentialElement(domain, domainConfig, credential, index) {
   usernameSpan.className = 'credential-username';
   
   const iconClass = credential.encrypted ? 'encryption-badge' : 'encryption-badge hidden';
-  usernameSpan.innerHTML = `<span class="${iconClass}">🔐</span> ${credential.username.trim()}`;
+  
+  // Create encryption icon span
+  const iconSpan = document.createElement('span');
+  iconSpan.className = iconClass;
+  iconSpan.textContent = '🔐';
+  
+  // Add icon and username text safely
+  usernameSpan.appendChild(iconSpan);
+  usernameSpan.appendChild(document.createTextNode(` ${credential.username.trim()}`));
   
   // Create fill button
   const fillBtn = document.createElement('button');
@@ -331,13 +341,13 @@ function createCredentialElement(domain, domainConfig, credential, index) {
   fillBtn.setAttribute('aria-label', `Fill credentials for ${credential.username}`);
   
   // Add click handler for filling credentials
-  fillBtn.addEventListener('click', (e) => {
+  fillBtn.addEventListener('click', e => {
     e.stopPropagation();
     fillCredentials(domain, domainConfig, index);
   });
   
   // Add keyboard support
-  fillBtn.addEventListener('keydown', (e) => {
+  fillBtn.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       fillCredentials(domain, domainConfig, index);
@@ -623,7 +633,7 @@ async function updateLoginStatus() {
 function setupLoginStatusConnection() {
   try {
     const port = chrome.runtime.connect({ name: 'loginStatus' });
-    port.onMessage.addListener((message) => {
+    port.onMessage.addListener(message => {
       if (message.action === 'loginStatusChanged') {
         updateLoginStatus();
       }

@@ -1,10 +1,32 @@
 /**
  * SelectorPass Options Page Script
- * Handles the extension settings interface for domain configuration and credential management
+ * 
+ * Handles the extension settings interface for domain configuration and credential management.
+ * Provides comprehensive UI for managing domains, credentials, and security settings.
+ * 
+ * Key Features:
+ * - Domain configuration with CSS selectors
+ * - Credential management with encryption support
+ * - Master password setup and management
+ * - Drag and drop credential reordering
+ * - Collapsible sections with state persistence
+ * - Real-time login status synchronization
+ * 
+ * Security Features:
+ * - AES-256-GCM encryption for sensitive credentials
+ * - PBKDF2 key derivation with 100,000 iterations
+ * - Session-based master password management
+ * - Secure password prompting with validation
+ * 
+ * @fileoverview Options page interface for SelectorPass extension
+ * @author SelectorPass Team
+ * @version 1.1.1
+ * @since 1.0.0
  */
 
+'use strict';
+
 (() => {
-  'use strict';
 
 // ============================================================================
 // INITIALIZATION
@@ -31,9 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     handleUrlParameters();
     
     // Re-enable transitions after a brief delay
-    setTimeout(() => {
-      document.body.classList.remove('no-transition');
-    }, 50);
+    setTimeout(() => document.body.classList.remove('no-transition'), 50);
     
     // Connect to background script for login status updates
     setupLoginStatusConnection();
@@ -84,9 +104,17 @@ function handleUrlParameters() {
 
 /**
  * Generate unique ID for credential
- * @param {string} username - Username
+ * 
+ * Creates a unique identifier for credentials using username, index,
+ * timestamp, and random string for backwards compatibility and uniqueness.
+ * 
+ * @param {string} username - Username for the credential
  * @param {number} index - Array index for backwards compatibility
- * @returns {string} Unique credential ID
+ * @returns {string} Unique credential ID in format: username_index_timestamp_random
+ * 
+ * @example
+ * const id = generateCredentialId('user@example.com', 0);
+ * // Returns: 'user@example.com_0_1640995200000_abc123def'
  */
 function generateCredentialId(username, index) {
   const timestamp = Date.now();
@@ -100,9 +128,9 @@ function generateCredentialId(username, index) {
  * @returns {Object} Migrated domains with credential IDs
  */
 function migrateCredentials(domains) {
-  Object.keys(domains).forEach(domain => {
-    if (domains[domain].credentials) {
-      domains[domain].credentials.forEach((cred, index) => {
+  Object.entries(domains).forEach(([domain, config]) => {
+    if (config.credentials) {
+      config.credentials.forEach((cred, index) => {
         if (!cred.id) {
           cred.id = generateCredentialId(cred.username || 'user', index);
         }
@@ -376,14 +404,36 @@ async function restoreDomainStates() {
   }
 }
 
-// Action handlers map for better performance and maintainability
+/**
+ * Action handlers map for UI button interactions
+ * 
+ * Maps action names to their corresponding handler functions for better
+ * performance and maintainability. Each handler receives domain and button parameters.
+ * 
+ * Supported actions:
+ * - delete-domain: Remove entire domain configuration
+ * - delete-credential: Remove specific credential from domain
+ * - add-credential: Add new credential to domain
+ * - edit-domain: Enter edit mode for domain settings
+ * - save-domain: Save domain configuration changes
+ * - cancel-edit: Cancel domain editing without saving
+ * - edit-credential: Enter edit mode for credential
+ * - save-credential: Save credential changes
+ * - cancel-credential: Cancel credential editing
+ * - toggle-password: Show/hide password in edit form
+ * - encrypt-credential: Encrypt unencrypted credential
+ * - decrypt-credential: Remove encryption from credential
+ * 
+ * @type {Map<string, Function>}
+ * @private
+ */
 const actionHandlers = new Map([
-  ['delete-domain', (domain) => deleteDomain(domain)],
+  ['delete-domain', domain => deleteDomain(domain)],
   ['delete-credential', (domain, button) => deleteCredential(domain, button.dataset.credentialId || button.dataset.index)],
-  ['add-credential', (domain) => addCredential(domain)],
-  ['edit-domain', (domain) => editDomain(domain)],
-  ['save-domain', (domain) => saveDomainEdit(domain)],
-  ['cancel-edit', (domain) => cancelDomainEdit(domain)],
+  ['add-credential', domain => addCredential(domain)],
+  ['edit-domain', domain => editDomain(domain)],
+  ['save-domain', domain => saveDomainEdit(domain)],
+  ['cancel-edit', domain => cancelDomainEdit(domain)],
   ['edit-credential', (domain, button) => editCredential(domain, button.dataset.credentialId || button.dataset.index)],
   ['save-credential', (domain, button) => saveCredential(domain, button.dataset.credentialId || button.dataset.index)],
   ['cancel-credential', (domain, button) => cancelCredential(domain, button.dataset.credentialId || button.dataset.index)],
@@ -427,9 +477,18 @@ function handleButtonClick(event) {
 
 
 /**
- * Validate domain input
- * @param {string} domain - Domain to validate
- * @returns {boolean} True if valid
+ * Validate domain input against RFC standards
+ * 
+ * Validates domain names using regex pattern that matches RFC 1035/1123
+ * standards for domain name format and length restrictions.
+ * 
+ * @param {string} domain - Domain name to validate (e.g., 'example.com')
+ * @returns {boolean} True if domain is valid, false otherwise
+ * 
+ * @example
+ * isValidDomain('example.com'); // true
+ * isValidDomain('sub.example.com'); // true
+ * isValidDomain('invalid..domain'); // false
  */
 function isValidDomain(domain) {
   // Basic domain validation - alphanumeric, dots, hyphens
@@ -438,9 +497,18 @@ function isValidDomain(domain) {
 }
 
 /**
- * Validate CSS selector input
- * @param {string} selector - CSS selector to validate
- * @returns {boolean} True if valid
+ * Validate CSS selector syntax
+ * 
+ * Tests if a string is a valid CSS selector by attempting to use it
+ * with document.querySelector(). Catches syntax errors safely.
+ * 
+ * @param {string} selector - CSS selector to validate (e.g., '#username', '.form input')
+ * @returns {boolean} True if selector is valid CSS syntax, false otherwise
+ * 
+ * @example
+ * isValidSelector('#username'); // true
+ * isValidSelector('.form input[type="text"]'); // true
+ * isValidSelector('invalid>>selector'); // false
  */
 function isValidSelector(selector) {
   try {
@@ -636,7 +704,7 @@ function createDomainHeader(domain) {
   header.appendChild(buttons);
   
   // Add click listener to the left side only (not buttons)
-  leftSide.addEventListener('click', (e) => {
+  leftSide.addEventListener('click', e => {
     e.stopPropagation();
     toggleDomainSection(domain);
   });
@@ -787,7 +855,15 @@ function createCredentialItem(domain, cred, index) {
   // Show username with encryption indicator (always show icon for alignment)
   const usernameText = (cred.username || '').trim();
   const iconClass = cred.encrypted ? 'encryption-badge' : 'encryption-badge hidden';
-  username.innerHTML = `<span class="${iconClass}">🔐</span> ${usernameText}`;
+  
+  // Create encryption icon span
+  const iconSpan = document.createElement('span');
+  iconSpan.className = iconClass;
+  iconSpan.textContent = '🔐';
+  
+  // Add icon and username text safely
+  username.appendChild(iconSpan);
+  username.appendChild(document.createTextNode(` ${usernameText}`));
   
   const buttons = document.createElement('div');
   buttons.className = 'credential-buttons';
@@ -1005,7 +1081,20 @@ function createIconButton(icon, tooltip, className, datasets) {
 
 function createIconTextButton(icon, text, className, datasets) {
   const button = document.createElement('button');
-  button.innerHTML = `<div class="btn-icon">${icon}</div><div class="btn-text">${text}</div>`;
+  
+  // Create icon div
+  const iconDiv = document.createElement('div');
+  iconDiv.className = 'btn-icon';
+  iconDiv.textContent = icon;
+  
+  // Create text div
+  const textDiv = document.createElement('div');
+  textDiv.className = 'btn-text';
+  textDiv.textContent = text;
+  
+  // Assemble button
+  button.appendChild(iconDiv);
+  button.appendChild(textDiv);
   button.className = className;
   button.title = text;
   
@@ -1150,7 +1239,7 @@ function promptForLogin() {
     passwordInput.placeholder = 'Enter master password';
     passwordInput.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; margin-top: 12px; font-size: 14px;';
     
-    messageEl.innerHTML = 'Enter your master password to login:';
+    messageEl.textContent = 'Enter your master password to login:';
     messageEl.appendChild(passwordInput);
     
     cancelBtn.style.display = 'inline-block';
@@ -1181,7 +1270,7 @@ function promptForLogin() {
       cancelBtn.removeEventListener('click', handleCancel);
       passwordInput.removeEventListener('keypress', handleKeyPress);
       confirmBtn.textContent = 'Delete';
-      messageEl.innerHTML = '';
+      messageEl.textContent = '';
     };
     
     confirmBtn.addEventListener('click', handleConfirm);
@@ -1228,7 +1317,7 @@ function promptForNewMasterPassword() {
     confirmInput.placeholder = 'Confirm new master password';
     confirmInput.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; margin-top: 8px; font-size: 14px;';
     
-    messageEl.innerHTML = 'Enter your new master password:';
+    messageEl.textContent = 'Enter your new master password:';
     messageEl.appendChild(passwordInput);
     messageEl.appendChild(confirmInput);
     
@@ -1264,7 +1353,7 @@ function promptForNewMasterPassword() {
       confirmBtn.removeEventListener('click', handleConfirm);
       cancelBtn.removeEventListener('click', handleCancel);
       confirmBtn.textContent = 'Delete';
-      messageEl.innerHTML = '';
+      messageEl.textContent = '';
     };
     
     confirmBtn.addEventListener('click', handleConfirm);
@@ -1299,7 +1388,7 @@ function promptForMasterPasswordWithMessage(message, buttonText = 'OK') {
     passwordInput.placeholder = 'Enter master password';
     passwordInput.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; margin-top: 12px; font-size: 14px;';
     
-    messageEl.innerHTML = message;
+    messageEl.textContent = message;
     messageEl.appendChild(passwordInput);
     
     // Show both buttons
@@ -1332,7 +1421,7 @@ function promptForMasterPasswordWithMessage(message, buttonText = 'OK') {
       passwordInput.removeEventListener('keypress', handleKeyPress);
       // Reset dialog
       confirmBtn.textContent = 'Delete';
-      messageEl.innerHTML = '';
+      messageEl.textContent = '';
     };
     
     confirmBtn.addEventListener('click', handleConfirm);
@@ -2206,22 +2295,26 @@ async function reencryptAllCredentials(newMasterPassword) {
       throw new Error('Current master password not available');
     }
     
-    for (const [domain, config] of Object.entries(domains)) {
-      if (config.credentials) {
-        for (let i = 0; i < config.credentials.length; i++) {
-          const cred = config.credentials[i];
-          if (cred.encrypted) {
-            const decrypted = await decryptCredentialDirectly(cred, oldMasterPassword);
-            const reencrypted = await encryptData(decrypted.password, newMasterPassword);
-            config.credentials[i] = {
-              username: cred.username,
-              password: reencrypted,
-              encrypted: true
-            };
-          }
+    await Promise.all(
+      Object.entries(domains).map(async ([domain, config]) => {
+        if (config.credentials) {
+          config.credentials = await Promise.all(
+            config.credentials.map(async (cred) => {
+              if (cred.encrypted) {
+                const decrypted = await decryptCredentialDirectly(cred, oldMasterPassword);
+                const reencrypted = await encryptData(decrypted.password, newMasterPassword);
+                return {
+                  username: cred.username,
+                  password: reencrypted,
+                  encrypted: true
+                };
+              }
+              return cred;
+            })
+          );
         }
-      }
-    }
+      })
+    );
     
     await saveData(domains);
   } catch (error) {
@@ -2272,29 +2365,28 @@ async function reencryptAllCredentials(newMasterPassword) {
       throw new Error('Current master password not available');
     }
     
-    // Process each domain
-    for (const [domain, config] of Object.entries(domains)) {
-      if (config.credentials) {
-        // Process each credential
-        for (let i = 0; i < config.credentials.length; i++) {
-          const cred = config.credentials[i];
-          if (cred.encrypted) {
-            // Decrypt with old password
-            const decrypted = await decryptCredentialDirectly(cred, oldMasterPassword);
-            // Encrypt with new password
-            const reencrypted = await encryptData(decrypted.password, newMasterPassword);
-            // Update credential
-            config.credentials[i] = {
-              username: cred.username,
-              password: reencrypted,
-              encrypted: true
-            };
-          }
+    // Process all domains and credentials functionally
+    await Promise.all(
+      Object.entries(domains).map(async ([domain, config]) => {
+        if (config.credentials) {
+          config.credentials = await Promise.all(
+            config.credentials.map(async (cred) => {
+              if (cred.encrypted) {
+                const decrypted = await decryptCredentialDirectly(cred, oldMasterPassword);
+                const reencrypted = await encryptData(decrypted.password, newMasterPassword);
+                return {
+                  username: cred.username,
+                  password: reencrypted,
+                  encrypted: true
+                };
+              }
+              return cred;
+            })
+          );
         }
-      }
-    }
+      })
+    );
     
-    // Save updated domains
     await saveData(domains);
   } catch (error) {
     console.error('SelectorPass: Error re-encrypting credentials:', error);
@@ -2340,12 +2432,28 @@ function showResetMasterPasswordDialog() {
       return;
     }
     
-    messageEl.innerHTML = `
-      <strong>⚠️ Reset Master Password</strong><br><br>
-      This will permanently delete ALL encrypted credentials.<br>
-      Unencrypted credentials will remain safe.<br><br>
-      This action cannot be undone.
-    `;
+    // Clear existing content
+    messageEl.textContent = '';
+    
+    // Create warning header
+    const warningHeader = document.createElement('strong');
+    warningHeader.textContent = '⚠️ Reset Master Password';
+    
+    // Create warning text
+    const warningText1 = document.createTextNode('This will permanently delete ALL encrypted credentials.');
+    const warningText2 = document.createTextNode('Unencrypted credentials will remain safe.');
+    const warningText3 = document.createTextNode('This action cannot be undone.');
+    
+    // Assemble message
+    messageEl.appendChild(warningHeader);
+    messageEl.appendChild(document.createElement('br'));
+    messageEl.appendChild(document.createElement('br'));
+    messageEl.appendChild(warningText1);
+    messageEl.appendChild(document.createElement('br'));
+    messageEl.appendChild(warningText2);
+    messageEl.appendChild(document.createElement('br'));
+    messageEl.appendChild(document.createElement('br'));
+    messageEl.appendChild(warningText3);
     
     cancelBtn.style.display = 'inline-block';
     confirmBtn.textContent = 'Reset Master Password';
@@ -2368,7 +2476,7 @@ function showResetMasterPasswordDialog() {
       cancelBtn.removeEventListener('click', handleCancel);
       confirmBtn.textContent = 'Delete';
       confirmBtn.style.background = '';
-      messageEl.innerHTML = '';
+      messageEl.textContent = '';
     };
     
     confirmBtn.addEventListener('click', handleConfirm);
@@ -2383,23 +2491,17 @@ function showResetMasterPasswordDialog() {
  */
 async function resetMasterPasswordAndCredentials() {
   try {
-    // Load current data
     const domains = await loadData();
     
-    // Remove all encrypted credentials from each domain
-    Object.keys(domains).forEach(domain => {
-      if (domains[domain].credentials) {
-        domains[domain].credentials = domains[domain].credentials.filter(cred => !cred.encrypted);
+    // Remove all encrypted credentials from each domain using functional approach
+    Object.values(domains).forEach(config => {
+      if (config.credentials) {
+        config.credentials = config.credentials.filter(cred => !cred.encrypted);
       }
     });
     
-    // Save updated domains
     await saveData(domains);
-    
-    // Clear security settings
     await chrome.storage.local.remove(['securitySettings']);
-    
-    // Clear master password from memory
     await clearMasterPassword();
   } catch (error) {
     console.error('SelectorPass: Error resetting master password and credentials:', error);
@@ -2528,17 +2630,9 @@ async function checkForUnencryptedCredentials() {
   try {
     const domains = await loadData();
     
-    for (const config of Object.values(domains)) {
-      if (config.credentials) {
-        for (const cred of config.credentials) {
-          if (!cred.encrypted) {
-            return true;
-          }
-        }
-      }
-    }
-    
-    return false;
+    return Object.values(domains).some(config => 
+      config.credentials?.some(cred => !cred.encrypted)
+    );
   } catch (error) {
     console.error('SelectorPass: Error checking for unencrypted credentials:', error);
     return false;
@@ -2627,7 +2721,7 @@ async function handleLogout() {
  */
 function setupLoginStatusConnection() {
   const port = chrome.runtime.connect({ name: 'loginStatus' });
-  port.onMessage.addListener((message) => {
+  port.onMessage.addListener(message => {
     if (message.action === 'loginStatusChanged') {
       updateSecurityUI();
     }
