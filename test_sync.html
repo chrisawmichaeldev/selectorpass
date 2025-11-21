@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Status Sync Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .logged-in { background: #d4edda; color: #155724; }
+        .logged-out { background: #f8d7da; color: #721c24; }
+        button { padding: 10px 15px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Login Status Synchronization Test</h1>
+    
+    <div id="status" class="status">Checking status...</div>
+    
+    <button id="loginBtn">Simulate Login</button>
+    <button id="logoutBtn">Simulate Logout</button>
+    <button id="checkBtn">Check Status</button>
+    
+    <h2>Test Instructions:</h2>
+    <ol>
+        <li>Open this test page</li>
+        <li>Open the extension options page in another tab</li>
+        <li>Click "Simulate Login" here and check if options page updates immediately</li>
+        <li>Click "Simulate Logout" here and check if options page updates immediately</li>
+    </ol>
+    
+    <script>
+        let port;
+        
+        // Connect to background script for real-time updates
+        function setupConnection() {
+            try {
+                port = chrome.runtime.connect({ name: 'loginStatus' });
+                port.onMessage.addListener(message => {
+                    if (message.action === 'loginStatusChanged') {
+                        updateStatus();
+                        console.log('Received login status change:', message.isLoggedIn);
+                    }
+                });
+                console.log('Connected to background script');
+            } catch (error) {
+                console.error('Failed to connect:', error);
+            }
+        }
+        
+        // Update status display
+        async function updateStatus() {
+            try {
+                const response = await chrome.runtime.sendMessage({ action: 'isMasterPasswordSet' });
+                const statusDiv = document.getElementById('status');
+                
+                if (response.isSet) {
+                    statusDiv.textContent = '🔓 Logged in';
+                    statusDiv.className = 'status logged-in';
+                } else {
+                    statusDiv.textContent = '🚫 Logged out';
+                    statusDiv.className = 'status logged-out';
+                }
+            } catch (error) {
+                console.error('Error checking status:', error);
+                document.getElementById('status').textContent = 'Error checking status';
+            }
+        }
+        
+        // Simulate login
+        async function simulateLogin() {
+            try {
+                const response = await chrome.runtime.sendMessage({ 
+                    action: 'setMasterPassword', 
+                    password: 'test123456' 
+                });
+                console.log('Login response:', response);
+                updateStatus();
+            } catch (error) {
+                console.error('Error simulating login:', error);
+            }
+        }
+        
+        // Simulate logout
+        async function simulateLogout() {
+            try {
+                const response = await chrome.runtime.sendMessage({ action: 'clearMasterPassword' });
+                console.log('Logout response:', response);
+                updateStatus();
+            } catch (error) {
+                console.error('Error simulating logout:', error);
+            }
+        }
+        
+        // Setup event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            setupConnection();
+            updateStatus();
+            
+            document.getElementById('loginBtn').addEventListener('click', simulateLogin);
+            document.getElementById('logoutBtn').addEventListener('click', simulateLogout);
+            document.getElementById('checkBtn').addEventListener('click', updateStatus);
+        });
+    </script>
+</body>
+</html>

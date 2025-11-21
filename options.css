@@ -697,3 +697,370 @@ button:active {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
 }
+
+/* Security Section Styles */
+.security-info {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.security-info p {
+  margin: 0;
+  color: #0c4a6e;
+  font-size: 14px;
+}
+
+.help-text {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.master-password-section,
+.unlock-section,
+.encrypted-section {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 16px;
+  border: 1px solid #e5e7eb;
+  overflow: visible;
+}
+
+.status-info {
+  background: #f0fdf4;
+  border: 1px solid #22c55e;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.status-indicator {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.status-indicator.encrypted {
+  color: #15803d;
+}
+
+.status-info p {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #166534;
+}
+
+select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+select:focus {
+  outline: none;
+  border-color: #64748b;
+  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.1);
+}
+
+.bulk-encrypt-section {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 16px 0;
+}
+
+.security-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.primary-btn:hover {
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+}
+
+.secondary-btn {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  font-size: 14px;
+  padding: 12px 20px;
+}
+
+.secondary-btn:hover {
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.25);
+}
+
+.danger-btn {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  font-size: 14px;
+  padding: 12px 20px;
+}
+
+.danger-btn:hover {
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+}
+
+.logout-btn {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.logout-btn:hover {
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+}
+
+.form-group label input[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.form-group label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 14px;
+}
+
+.form-group label span {
+  user-select: none;
+}
+
+.encrypt-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #6b7280;
+  margin: 8px 0;
+  cursor: pointer;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.encrypt-checkbox {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
+.credential-action-btn {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: none;
+  letter-spacing: normal;
+  width: 24px;
+  height: 24px;
+  margin-left: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.credential-action-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+  transform: none;
+  box-shadow: none;
+}
+
+.encryption-badge {
+  font-size: 12px;
+  color: #059669;
+  margin-right: 4px;
+  opacity: 0.8;
+}
+
+.encryption-badge.hidden {
+  visibility: hidden;
+}
+
+/* Custom Tooltip */
+.tooltip {
+  position: relative;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  background: #1f2937;
+  color: white;
+  text-align: center;
+  border-radius: 8px;
+  padding: 8px 12px;
+  position: absolute;
+  z-index: 1000;
+  bottom: 125%;
+  right: -210px;
+  font-size: 13px;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 230px;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1f2937 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+.tooltip-text.show {
+  visibility: visible;
+  opacity: 1;
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.button-row button {
+  flex: 1;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-status {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.login-status .status-indicator {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.login-status.logged-in {
+  background: #f0fdf4;
+  border: 1px solid #22c55e;
+}
+
+.login-status.logged-in .status-indicator {
+  color: #15803d;
+}
+
+.login-status.logged-out {
+  background: #fef2f2;
+  border: 1px solid #ef4444;
+}
+
+.login-status.logged-out .status-indicator {
+  color: #dc2626;
+}
+
+/* Footer Styles */
+.page-footer {
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+  padding: 20px 40px;
+  margin-top: 0;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 900px;
+  margin: 0 auto;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.footer-text {
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.footer-links {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.github-link,
+.demo-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7280;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.github-link:hover {
+  color: #374151;
+  background: #f3f4f6;
+  transform: translateY(-1px);
+}
+
+.demo-link:hover {
+  color: #dc2626;
+  background: #fef2f2;
+  transform: translateY(-1px);
+}
+
+.github-icon,
+.demo-icon {
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .footer-links {
+    justify-content: center;
+  }
+}

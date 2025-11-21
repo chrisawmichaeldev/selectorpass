@@ -1,0 +1,17 @@
+{
+    "chrisawmichaeldev.github.io": {
+        "autoSortRecent": true,
+        "credentials": [
+            {
+                "password": "Pw32",
+                "username": "user2"
+            },
+            {
+                "password": "password",
+                "username": "user1"
+            }
+        ],
+        "passwordSelector": "#password",
+        "usernameSelector": "#username"
+    }
+}

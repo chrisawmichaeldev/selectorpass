@@ -44,6 +44,59 @@
       </div>
     </div>
     
+    <div class="section collapsible">
+      <h2 class="collapsible-header" id="securityHeader">
+        <span class="expand-icon">▶</span>
+        🔐 Security
+      </h2>
+      <div class="collapsible-content" id="securityContent">
+        <div>
+          <div class="security-info">
+            <p>Manage your master password for encrypted credentials.</p>
+            <p><strong>Encryption:</strong> Uses AES-256-GCM with PBKDF2 key derivation for enterprise-grade security.</p>
+            <div id="loginStatus" class="login-status">
+              <span class="status-indicator" id="statusText">🚫 Logged out</span>
+            </div>
+          </div>
+          
+          <div id="setupMasterPasswordSection" class="setup-section">
+            <button id="setupMasterPasswordBtn" class="primary-btn">Setup Master Password</button>
+          </div>
+          
+          <div id="existingMasterPasswordSection" class="existing-section" style="display: none;">
+            <div class="button-row">
+              <button id="loginBtn" class="primary-btn" style="display: none;">Login</button>
+              <button id="logoutBtn" class="secondary-btn" style="display: none;">Logout</button>
+              <button id="changeMasterPasswordBtn" class="secondary-btn">Change Master Password</button>
+              <button id="resetMasterPasswordBtn" class="danger-btn">Reset Master Password</button>
+            </div>
+          </div>
+          
+          <div id="masterPasswordSection" class="master-password-section" style="display: none;">
+            <div class="form-group">
+              <label for="masterPassword">Master Password:</label>
+              <input type="password" id="masterPassword" name="masterPassword" placeholder="Enter master password">
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm Password:</label>
+              <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm master password">
+            </div>
+            <button id="setMasterPasswordBtn" class="primary-btn">Set Master Password</button>
+          </div>
+          
+          <div id="unlockSection" class="unlock-section" style="display: none;">
+            <div class="form-group">
+              <label for="unlockPassword">Enter Master Password:</label>
+              <input type="password" id="unlockPassword" name="unlockPassword" placeholder="Master password">
+            </div>
+            <button id="unlockBtn" class="primary-btn">Unlock</button>
+          </div>
+          
+
+        </div>
+      </div>
+    </div>
+    
     <div class="section collapsible expanded">
       <h2 class="collapsible-header" id="manageDomainsHeader">
         <span class="expand-icon">▶</span>
@@ -57,6 +110,20 @@
     </div>
   </div>
   
+  <footer class="page-footer">
+    <div class="footer-content">
+      <span class="footer-text">SelectorPass v1.1.1 • Open Source</span>
+      <div class="footer-links">
+        <a href="https://youtu.be/Lw2BCiFpCqY" target="_blank" class="demo-link">
+          <span class="demo-icon">📺</span> Demo Video
+        </a>
+        <a href="https://github.com/chrisawmichaeldev/selectorpass" target="_blank" class="github-link">
+          <span class="github-icon">⭐</span> GitHub
+        </a>
+      </div>
+    </div>
+  </footer>
+  
   <dialog id="confirmDialog" class="confirm-dialog">
     <div class="dialog-content">
       <h3 class="dialog-title">Confirm Action</h3>
@@ -68,6 +135,7 @@
     </div>
   </dialog>
   
+  <script src="encryption.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

@@ -1,7 +1,32 @@
 /**
  * SelectorPass Options Page Script
- * Handles the extension settings interface for domain configuration and credential management
+ * 
+ * Handles the extension settings interface for domain configuration and credential management.
+ * Provides comprehensive UI for managing domains, credentials, and security settings.
+ * 
+ * Key Features:
+ * - Domain configuration with CSS selectors
+ * - Credential management with encryption support
+ * - Master password setup and management
+ * - Drag and drop credential reordering
+ * - Collapsible sections with state persistence
+ * - Real-time login status synchronization
+ * 
+ * Security Features:
+ * - AES-256-GCM encryption for sensitive credentials
+ * - PBKDF2 key derivation with 100,000 iterations
+ * - Session-based master password management
+ * - Secure password prompting with validation
+ * 
+ * @fileoverview Options page interface for SelectorPass extension
+ * @author SelectorPass Team
+ * @version 1.1.1
+ * @since 1.0.0
  */
+
+'use strict';
+
+(() => {
 
 // ============================================================================
 // INITIALIZATION
@@ -18,19 +43,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     await restoreAddDomainState();
     setupEventListeners();
+    await setupSecuritySection();
     await loadAndDisplayDomains();
+    
+    // Check if user is already logged in
+    await checkLoginStatus();
     
     // Handle URL parameters for domain pre-population
     handleUrlParameters();
     
     // Re-enable transitions after a brief delay
-    setTimeout(() => {
-      document.body.classList.remove('no-transition');
-    }, 50);
+    setTimeout(() => document.body.classList.remove('no-transition'), 50);
+    
+    // Connect to background script for login status updates
+    setupLoginStatusConnection();
   } catch (error) {
     // Silent error handling
   }
 });
+
+
 
 // ============================================================================
 // URL PARAMETER HANDLING
@@ -71,13 +103,93 @@ function handleUrlParameters() {
 // ============================================================================
 
 /**
+ * Generate unique ID for credential
+ * 
+ * Creates a unique identifier for credentials using username, index,
+ * timestamp, and random string for backwards compatibility and uniqueness.
+ * 
+ * @param {string} username - Username for the credential
+ * @param {number} index - Array index for backwards compatibility
+ * @returns {string} Unique credential ID in format: username_index_timestamp_random
+ * 
+ * @example
+ * const id = generateCredentialId('user@example.com', 0);
+ * // Returns: 'user@example.com_0_1640995200000_abc123def'
+ */
+function generateCredentialId(username, index) {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substr(2, 9);
+  return `${username}_${index}_${timestamp}_${random}`;
+}
+
+/**
+ * Migrate existing credentials to include unique IDs
+ * @param {Object} domains - Domain configurations
+ * @returns {Object} Migrated domains with credential IDs
+ */
+function migrateCredentials(domains) {
+  Object.entries(domains).forEach(([domain, config]) => {
+    if (config.credentials) {
+      config.credentials.forEach((cred, index) => {
+        if (!cred.id) {
+          cred.id = generateCredentialId(cred.username || 'user', index);
+        }
+      });
+    }
+  });
+  return domains;
+}
+
+/**
+ * Find credential index by ID with fallback to array index
+ * @param {Array} credentials - Array of credentials
+ * @param {string} credentialId - Credential ID or legacy index
+ * @returns {number} Index of credential or -1 if not found
+ */
+function findCredentialIndex(credentials, credentialId) {
+
+  
+  // Try to find by ID first (new method)
+  let index = credentials.findIndex(cred => cred.id === credentialId);
+  
+  // Fallback to array index (legacy data) if no ID found
+  if (index === -1 && !isNaN(credentialId)) {
+    index = parseInt(credentialId);
+    if (index >= 0 && index < credentials.length) {
+      return index;
+    }
+  }
+  
+  return index;
+}
+
+/**
  * Load all domain configurations from Chrome storage
  * @returns {Promise<Object>} Object containing all domain configurations
  */
 async function loadData() {
   try {
-    const result = await chrome.storage.local.get(['domains']);
-    return result.domains || {};
+    const result = await chrome.storage.local.get(['domains', 'migrated']);
+    let domains = result.domains || {};
+    
+    // Always ensure all credentials have IDs (handles both migration and data integrity)
+    let needsSave = false;
+    Object.entries(domains).forEach(([domain, config]) => {
+      if (config.credentials) {
+        config.credentials.forEach((cred, index) => {
+          if (!cred.id) {
+            cred.id = generateCredentialId(cred.username || 'user', index);
+            needsSave = true;
+          }
+        });
+      }
+    });
+    
+    if (needsSave) {
+      await chrome.storage.local.set({ domains, migrated: true });
+    }
+    
+    return domains;
   } catch (error) {
     return {};
   }
@@ -115,10 +227,18 @@ function setupEventListeners() {
       addDomainHeader.addEventListener('click', toggleAddDomainSection);
     }
     
+    const securityHeader = document.getElementById('securityHeader');
+    if (securityHeader) {
+      securityHeader.addEventListener('click', toggleSecuritySection);
+    }
+    
     const manageDomainsHeader = document.getElementById('manageDomainsHeader');
     if (manageDomainsHeader) {
       manageDomainsHeader.addEventListener('click', toggleManageDomainsSection);
     }
+    
+    // Setup security event listeners
+    setupSecurityEventListeners();
     
     // Setup Buy Me a Coffee button
     const buyCoffeeBtn = document.getElementById('buy-coffee');
@@ -161,19 +281,36 @@ async function toggleAddDomainSection() {
 }
 
 /**
+ * Toggle the Security section collapse state
+ */
+async function toggleSecuritySection() {
+  try {
+    const section = document.getElementById('securityHeader')?.closest('.section');
+    if (!section) {
+      return;
+    }
+    
+    section.classList.toggle('expanded');
+    
+    const isExpanded = section.classList.contains('expanded');
+    await chrome.storage.local.set({ securityExpanded: isExpanded });
+  } catch (error) {
+    // Silent error handling
+  }
+}
+
+/**
  * Toggle the Manage Domains section collapse state
  */
 async function toggleManageDomainsSection() {
   try {
     const header = document.getElementById('manageDomainsHeader');
     if (!header) {
-      console.error('SelectorPass: Manage domains header not found');
       return;
     }
     
     const section = header.closest('.section');
     if (!section) {
-      console.error('SelectorPass: Manage domains section not found');
       return;
     }
     
@@ -182,7 +319,7 @@ async function toggleManageDomainsSection() {
     const isExpanded = section.classList.contains('expanded');
     await chrome.storage.local.set({ manageDomainsExpanded: isExpanded });
   } catch (error) {
-    console.error('SelectorPass: Error toggling manage domains section:', error);
+    // Silent error handling
   }
 }
 
@@ -191,13 +328,24 @@ async function toggleManageDomainsSection() {
  */
 async function restoreAddDomainState() {
   try {
-    const result = await chrome.storage.local.get(['addDomainExpanded', 'manageDomainsExpanded']);
+    const result = await chrome.storage.local.get(['addDomainExpanded', 'securityExpanded', 'manageDomainsExpanded']);
     const addDomainExpanded = result.addDomainExpanded || false;
+    const securityExpanded = result.securityExpanded || false;
     const manageDomainsExpanded = result.manageDomainsExpanded !== false;
     
     const addDomainSection = document.getElementById('addDomainHeader')?.closest('.section');
-    if (addDomainExpanded && addDomainSection) {
-      addDomainSection.classList.add('expanded');
+    if (addDomainSection) {
+      addDomainSection.classList.add('collapsible');
+      if (addDomainExpanded) {
+        addDomainSection.classList.add('expanded');
+      }
+    }
+    
+    const securitySection = document.getElementById('securityHeader')?.closest('.section');
+    if (securityExpanded && securitySection) {
+      securitySection.classList.add('expanded');
+    } else if (securitySection) {
+      securitySection.classList.add('collapsible');
     }
     
     const manageDomainsSection = document.getElementById('manageDomainsHeader')?.closest('.section');
@@ -205,7 +353,7 @@ async function restoreAddDomainState() {
       manageDomainsSection.classList.remove('expanded');
     }
   } catch (error) {
-    console.error('SelectorPass: Error restoring domain state:', error);
+    // Silent error handling
   }
 }
 
@@ -216,7 +364,6 @@ async function restoreAddDomainState() {
 async function toggleDomainSection(domain) {
   try {
     if (!domain) {
-      console.error('SelectorPass: Domain parameter is required');
       return;
     }
     
@@ -233,7 +380,7 @@ async function toggleDomainSection(domain) {
       await chrome.storage.local.set({ domainStates });
     }
   } catch (error) {
-    console.error('SelectorPass: Error toggling domain section:', error);
+    // Silent error handling
   }
 }
 
@@ -260,26 +407,50 @@ async function restoreDomainStates() {
           domainItem.classList.add('expanded');
         }
       } catch (error) {
-        console.error('SelectorPass: Error restoring state for domain item:', error);
+        // Silent error handling
       }
     });
   } catch (error) {
-    console.error('SelectorPass: Error restoring domain states:', error);
+    // Silent error handling
   }
 }
 
-// Action handlers map for better performance and maintainability
+/**
+ * Action handlers map for UI button interactions
+ * 
+ * Maps action names to their corresponding handler functions for better
+ * performance and maintainability. Each handler receives domain and button parameters.
+ * 
+ * Supported actions:
+ * - delete-domain: Remove entire domain configuration
+ * - delete-credential: Remove specific credential from domain
+ * - add-credential: Add new credential to domain
+ * - edit-domain: Enter edit mode for domain settings
+ * - save-domain: Save domain configuration changes
+ * - cancel-edit: Cancel domain editing without saving
+ * - edit-credential: Enter edit mode for credential
+ * - save-credential: Save credential changes
+ * - cancel-credential: Cancel credential editing
+ * - toggle-password: Show/hide password in edit form
+ * - encrypt-credential: Encrypt unencrypted credential
+ * - decrypt-credential: Remove encryption from credential
+ * 
+ * @type {Map<string, Function>}
+ * @private
+ */
 const actionHandlers = new Map([
-  ['delete-domain', (domain) => deleteDomain(domain)],
-  ['delete-credential', (domain, button) => deleteCredential(domain, parseInt(button.dataset.index))],
-  ['add-credential', (domain) => addCredential(domain)],
-  ['edit-domain', (domain) => editDomain(domain)],
-  ['save-domain', (domain) => saveDomainEdit(domain)],
-  ['cancel-edit', (domain) => cancelDomainEdit(domain)],
-  ['edit-credential', (domain, button) => editCredential(domain, parseInt(button.dataset.index))],
-  ['save-credential', (domain, button) => saveCredential(domain, parseInt(button.dataset.index))],
-  ['cancel-credential', (domain, button) => cancelCredential(domain, parseInt(button.dataset.index))],
-  ['toggle-password', (domain, button) => togglePassword(domain, parseInt(button.dataset.index))]
+  ['delete-domain', domain => deleteDomain(domain)],
+  ['delete-credential', (domain, button) => deleteCredential(domain, button.dataset.credentialId)],
+  ['add-credential', domain => addCredential(domain)],
+  ['edit-domain', domain => editDomain(domain)],
+  ['save-domain', domain => saveDomainEdit(domain)],
+  ['cancel-edit', domain => cancelDomainEdit(domain)],
+  ['edit-credential', (domain, button) => editCredential(domain, button.dataset.credentialId)],
+  ['save-credential', (domain, button) => saveCredential(domain, button.dataset.credentialId)],
+  ['cancel-credential', (domain, button) => cancelCredential(domain, button.dataset.credentialId)],
+  ['toggle-password', (domain, button) => togglePassword(domain, button.dataset.credentialId)],
+  ['encrypt-credential', (domain, button) => encryptSingleCredential(domain, button.dataset.credentialId)],
+  ['decrypt-credential', (domain, button) => decryptSingleCredential(domain, button.dataset.credentialId)]
 ]);
 
 /**
@@ -310,16 +481,25 @@ function handleButtonClick(event) {
       }
     }
   } catch (error) {
-    console.error('SelectorPass: Error handling button click:', error);
+    // Silent error handling
   }
 }
 
 
 
 /**
- * Validate domain input
- * @param {string} domain - Domain to validate
- * @returns {boolean} True if valid
+ * Validate domain input against RFC standards
+ * 
+ * Validates domain names using regex pattern that matches RFC 1035/1123
+ * standards for domain name format and length restrictions.
+ * 
+ * @param {string} domain - Domain name to validate (e.g., 'example.com')
+ * @returns {boolean} True if domain is valid, false otherwise
+ * 
+ * @example
+ * isValidDomain('example.com'); // true
+ * isValidDomain('sub.example.com'); // true
+ * isValidDomain('invalid..domain'); // false
  */
 function isValidDomain(domain) {
   // Basic domain validation - alphanumeric, dots, hyphens
@@ -328,9 +508,18 @@ function isValidDomain(domain) {
 }
 
 /**
- * Validate CSS selector input
- * @param {string} selector - CSS selector to validate
- * @returns {boolean} True if valid
+ * Validate CSS selector syntax
+ * 
+ * Tests if a string is a valid CSS selector by attempting to use it
+ * with document.querySelector(). Catches syntax errors safely.
+ * 
+ * @param {string} selector - CSS selector to validate (e.g., '#username', '.form input')
+ * @returns {boolean} True if selector is valid CSS syntax, false otherwise
+ * 
+ * @example
+ * isValidSelector('#username'); // true
+ * isValidSelector('.form input[type="text"]'); // true
+ * isValidSelector('invalid>>selector'); // false
  */
 function isValidSelector(selector) {
   try {
@@ -349,7 +538,6 @@ async function saveDomain() {
     const passwordInput = document.getElementById('passwordSelector');
     
     if (!domainInput || !usernameInput || !passwordInput) {
-      console.error('SelectorPass: Required form elements not found');
       showConfirmDialog('Form elements not found. Please refresh the page.', () => {});
       return;
     }
@@ -396,7 +584,6 @@ async function saveDomain() {
     
     await loadAndDisplayDomains();
   } catch (error) {
-    console.error('SelectorPass: Error saving domain:', error);
     showConfirmDialog('Error saving domain. Please try again.', () => {});
   }
 }
@@ -408,7 +595,7 @@ async function loadAndDisplayDomains() {
     const domains = await loadData();
     await displayDomains(domains);
   } catch (error) {
-    console.error('SelectorPass: Error loading and displaying domains:', error);
+    // Silent error handling
   }
 }
 
@@ -416,7 +603,6 @@ async function displayDomains(domains) {
   try {
     const container = document.getElementById('domainsList');
     if (!container) {
-      console.error('SelectorPass: Domains list container not found');
       return;
     }
     
@@ -427,7 +613,7 @@ async function displayDomains(domains) {
         const domainDiv = createDomainElement(domain, config);
         container.appendChild(domainDiv);
       } catch (error) {
-        console.error(`SelectorPass: Error creating domain element for ${domain}:`, error);
+        // Silent error handling
       }
     });
     
@@ -440,7 +626,7 @@ async function displayDomains(domains) {
     // Restore domain collapse states
     await restoreDomainStates();
   } catch (error) {
-    console.error('SelectorPass: Error displaying domains:', error);
+    // Silent error handling
   }
 }
 
@@ -526,7 +712,7 @@ function createDomainHeader(domain) {
   header.appendChild(buttons);
   
   // Add click listener to the left side only (not buttons)
-  leftSide.addEventListener('click', (e) => {
+  leftSide.addEventListener('click', e => {
     e.stopPropagation();
     toggleDomainSection(domain);
   });
@@ -564,7 +750,7 @@ function createSelectorInfo(domain, config) {
   display.appendChild(statusSpan);
   
   // Edit mode
-  const edit = createSelectorEditForm(config);
+  const edit = createSelectorEditForm(domain, config);
   
   selectorInfo.appendChild(display);
   selectorInfo.appendChild(edit);
@@ -572,7 +758,7 @@ function createSelectorInfo(domain, config) {
   return selectorInfo;
 }
 
-function createSelectorEditForm(config) {
+function createSelectorEditForm(domain, config) {
   const edit = document.createElement('div');
   edit.className = 'selector-edit';
   edit.style.display = 'none';
@@ -587,6 +773,9 @@ function createSelectorEditForm(config) {
   usernameInput.className = 'selector-input';
   usernameInput.dataset.field = 'usernameSelector';
   usernameInput.value = config.usernameSelector.trim();
+  usernameInput.id = `selector-username-${domain}`;
+  usernameInput.name = `selector-username-${domain}`;
+  usernameLabel.setAttribute('for', usernameInput.id);
   usernameRow.appendChild(usernameLabel);
   usernameRow.appendChild(usernameInput);
   
@@ -600,6 +789,9 @@ function createSelectorEditForm(config) {
   passwordInput.className = 'selector-input';
   passwordInput.dataset.field = 'passwordSelector';
   passwordInput.value = config.passwordSelector.trim();
+  passwordInput.id = `selector-password-${domain}`;
+  passwordInput.name = `selector-password-${domain}`;
+  passwordLabel.setAttribute('for', passwordInput.id);
   passwordRow.appendChild(passwordLabel);
   passwordRow.appendChild(passwordInput);
   
@@ -650,11 +842,16 @@ function createCredentialsSection(domain, config) {
 }
 
 function createCredentialItem(domain, cred, index) {
+  // Ensure credential has an ID
+  if (!cred.id) {
+    cred.id = `legacy_${index}`;
+  }
+  
   const item = document.createElement('div');
   item.className = 'credential-item';
   item.draggable = true;
   item.dataset.domain = domain;
-  item.dataset.index = index;
+  item.dataset.credentialId = cred.id;
   
   // Display mode
   const display = document.createElement('div');
@@ -666,15 +863,34 @@ function createCredentialItem(domain, cred, index) {
   
   const username = document.createElement('span');
   username.className = 'credential-username';
-  username.textContent = cred.username.trim();
+  
+  // Show username with encryption indicator (always show icon for alignment)
+  const usernameText = (cred.username || '').trim();
+  const iconClass = cred.encrypted ? 'encryption-badge' : 'encryption-badge hidden';
+  
+  // Create encryption icon span
+  const iconSpan = document.createElement('span');
+  iconSpan.className = iconClass;
+  iconSpan.textContent = '🔐';
+  
+  // Add icon and username text safely
+  username.appendChild(iconSpan);
+  username.appendChild(document.createTextNode(` ${usernameText}`));
   
   const buttons = document.createElement('div');
   buttons.className = 'credential-buttons';
   
-  const editBtn = createButton('Edit', 'edit-btn', { domain, index, action: 'edit-credential' });
-  const deleteBtn = createButton('Delete', 'delete-btn', { domain, index, action: 'delete-credential' });
+  const editBtn = createIconButton('✏️', 'Edit credential', 'credential-action-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'edit-credential' });
+  
+  // Add encrypt/remove encryption button based on current state
+  const encryptBtn = cred.encrypted 
+    ? createIconButton('🔓', 'Remove encryption', 'credential-action-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'decrypt-credential' })
+    : createIconButton('🔐', 'Encrypt credential', 'credential-action-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'encrypt-credential' });
+  
+  const deleteBtn = createIconButton('🗑️', 'Delete credential', 'credential-action-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'delete-credential' });
   
   buttons.appendChild(editBtn);
+  buttons.appendChild(encryptBtn);
   buttons.appendChild(deleteBtn);
   
   display.appendChild(dragHandle);
@@ -695,27 +911,63 @@ function createCredentialEditForm(domain, cred, index) {
   edit.className = 'credential-edit';
   edit.style.display = 'none';
   
+  const usernameLabel = document.createElement('label');
+  usernameLabel.textContent = 'Username';
+  usernameLabel.setAttribute('for', `edit-username-${domain}-${index}`);
+  usernameLabel.style.display = 'none';
+  
   const usernameInput = document.createElement('input');
   usernameInput.type = 'text';
   usernameInput.className = 'cred-username-input';
-  usernameInput.value = cred.username.trim();
+  
+  // Username is always available (not encrypted)
+  usernameInput.value = (cred.username || '').trim();
   usernameInput.placeholder = 'Username';
+  
+  usernameInput.id = `edit-username-${domain}-${index}`;
+  usernameInput.name = `edit-username-${domain}-${index}`;
   
   const passwordField = document.createElement('div');
   passwordField.className = 'password-field';
   
+  const passwordLabel = document.createElement('label');
+  passwordLabel.textContent = 'Password';
+  passwordLabel.setAttribute('for', `edit-password-${domain}-${index}`);
+  passwordLabel.style.display = 'none';
+  
   const passwordInput = document.createElement('input');
   passwordInput.type = 'password';
   passwordInput.className = 'cred-password-input';
-  passwordInput.value = cred.password.trim();
-  passwordInput.placeholder = 'Password';
+  
+  // Handle encrypted passwords
+  if (cred.encrypted) {
+    // Try to decrypt and show password if logged in
+    decryptCredentialForEdit(cred).then(decrypted => {
+      if (decrypted) {
+        passwordInput.value = decrypted.password || '';
+        passwordInput.placeholder = 'Password';
+      } else {
+        passwordInput.value = '';
+        passwordInput.placeholder = 'Password (encrypted - enter new to change)';
+      }
+    }).catch((error) => {
+      passwordInput.value = '';
+      passwordInput.placeholder = 'Password (encrypted - enter new to change)';
+    });
+  } else {
+    passwordInput.value = (cred.password || '').trim();
+    passwordInput.placeholder = 'Password';
+  }
+  
+  passwordInput.id = `edit-password-${domain}-${index}`;
+  passwordInput.name = `edit-password-${domain}-${index}`;
   
   const showBtn = document.createElement('button');
   showBtn.type = 'button';
   showBtn.className = 'show-password-btn';
   showBtn.textContent = '👁️';
   showBtn.dataset.domain = domain;
-  showBtn.dataset.index = index;
+  showBtn.dataset.credentialId = cred.id || `legacy_${index}`;
   showBtn.dataset.action = 'toggle-password';
   
   passwordField.appendChild(passwordInput);
@@ -724,13 +976,15 @@ function createCredentialEditForm(domain, cred, index) {
   const buttons = document.createElement('div');
   buttons.className = 'credential-buttons';
   
-  const saveBtn = createButton('Save', 'save-btn', { domain, index, action: 'save-credential' });
-  const cancelBtn = createButton('Cancel', 'cancel-btn', { domain, index, action: 'cancel-credential' });
+  const saveBtn = createButton('Save', 'save-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'save-credential' });
+  const cancelBtn = createButton('Cancel', 'cancel-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'cancel-credential' });
   
   buttons.appendChild(saveBtn);
   buttons.appendChild(cancelBtn);
   
+  edit.appendChild(usernameLabel);
   edit.appendChild(usernameInput);
+  passwordField.appendChild(passwordLabel);
   edit.appendChild(passwordField);
   edit.appendChild(buttons);
   
@@ -741,20 +995,71 @@ function createCredentialForm(domain) {
   const form = document.createElement('div');
   form.className = 'credential-form';
   
+  const usernameLabel = document.createElement('label');
+  usernameLabel.textContent = 'Username';
+  usernameLabel.setAttribute('for', `username-${domain}`);
+  usernameLabel.style.display = 'none';
+  
   const usernameInput = document.createElement('input');
   usernameInput.type = 'text';
   usernameInput.placeholder = 'Username';
   usernameInput.id = `username-${domain}`;
+  usernameInput.name = `username-${domain}`;
+  
+  const passwordLabel = document.createElement('label');
+  passwordLabel.textContent = 'Password';
+  passwordLabel.setAttribute('for', `password-${domain}`);
+  passwordLabel.style.display = 'none';
+  
+  const passwordField = document.createElement('div');
+  passwordField.className = 'password-field';
   
   const passwordInput = document.createElement('input');
   passwordInput.type = 'password';
   passwordInput.placeholder = 'Password';
   passwordInput.id = `password-${domain}`;
+  passwordInput.name = `password-${domain}`;
+  
+  const showBtn = document.createElement('button');
+  showBtn.type = 'button';
+  showBtn.className = 'show-password-btn';
+  showBtn.textContent = '👁️';
+  showBtn.addEventListener('click', () => {
+    if (passwordInput.type === 'password') {
+      passwordInput.type = 'text';
+      showBtn.textContent = '🙈';
+    } else {
+      passwordInput.type = 'password';
+      showBtn.textContent = '👁️';
+    }
+  });
+  
+  passwordField.appendChild(passwordInput);
+  passwordField.appendChild(showBtn);
+  
+  // Encryption checkbox
+  const encryptLabel = document.createElement('label');
+  encryptLabel.className = 'encrypt-checkbox-label';
+  
+  const encryptCheckbox = document.createElement('input');
+  encryptCheckbox.type = 'checkbox';
+  encryptCheckbox.id = `encrypt-${domain}`;
+  encryptCheckbox.name = `encrypt-${domain}`;
+  encryptCheckbox.className = 'encrypt-checkbox';
+  
+  const encryptText = document.createElement('span');
+  encryptText.textContent = 'Encrypt this credential';
+  
+  encryptLabel.appendChild(encryptCheckbox);
+  encryptLabel.appendChild(encryptText);
   
   const addBtn = createButton('Add', 'add-credential-btn', { domain, action: 'add-credential' });
   
+  form.appendChild(usernameLabel);
   form.appendChild(usernameInput);
-  form.appendChild(passwordInput);
+  form.appendChild(passwordLabel);
+  form.appendChild(passwordField);
+  form.appendChild(encryptLabel);
   form.appendChild(addBtn);
   
   return form;
@@ -772,12 +1077,50 @@ function createButton(text, className, datasets) {
   return button;
 }
 
+function createIconButton(icon, tooltip, className, datasets) {
+  const button = document.createElement('button');
+  button.textContent = icon;
+  button.className = className;
+  button.title = tooltip;
+  
+  Object.entries(datasets).forEach(([key, value]) => {
+    button.dataset[key] = value;
+  });
+  
+  return button;
+}
+
+function createIconTextButton(icon, text, className, datasets) {
+  const button = document.createElement('button');
+  
+  // Create icon div
+  const iconDiv = document.createElement('div');
+  iconDiv.className = 'btn-icon';
+  iconDiv.textContent = icon;
+  
+  // Create text div
+  const textDiv = document.createElement('div');
+  textDiv.className = 'btn-text';
+  textDiv.textContent = text;
+  
+  // Assemble button
+  button.appendChild(iconDiv);
+  button.appendChild(textDiv);
+  button.className = className;
+  button.title = text;
+  
+  Object.entries(datasets).forEach(([key, value]) => {
+    button.dataset[key] = value;
+  });
+  
+  return button;
+}
+
 async function addCredential(domain) {
   const usernameInput = document.getElementById(`username-${domain}`);
   const passwordInput = document.getElementById(`password-${domain}`);
   
   if (!usernameInput || !passwordInput) {
-    console.error('SelectorPass: Credential input fields not found');
     return;
   }
   
@@ -799,26 +1142,304 @@ async function addCredential(domain) {
     const domains = await loadData();
     
     if (!domains[domain]) {
-      console.error('SelectorPass: Domain configuration not found');
       return;
     }
     
-    domains[domain].credentials.push({ 
-      username: username, 
-      password: password 
-    });
+    // Check if user wants to encrypt this credential
+    const encryptCheckbox = document.getElementById(`encrypt-${domain}`);
+    const shouldEncrypt = encryptCheckbox?.checked || false;
+    
+    let credentialToSave = { 
+      id: generateCredentialId(username, domains[domain].credentials.length),
+      username, 
+      password 
+    };
+    
+    if (shouldEncrypt) {
+      const settings = await getSecuritySettings();
+      
+      if (!settings.masterPasswordSet) {
+        showAlertDialog('Please set up a master password first in the Security section.');
+        return;
+      }
+      
+      // Only prompt for password if not already logged in
+      const isLoggedIn = await isMasterPasswordSet();
+      if (!isLoggedIn) {
+        const masterPassword = await promptForMasterPassword();
+        if (!masterPassword) {
+          return; // User cancelled
+        }
+        
+        const isValid = await verifyMasterPassword(masterPassword);
+        if (!isValid) {
+          showAlertDialog('Incorrect master password');
+          return;
+        }
+        
+        await setMasterPassword(masterPassword, 'browser');
+      }
+      
+      try {
+        credentialToSave = await encryptCredential({ username, password });
+      } catch (error) {
+        console.error('SelectorPass: Error encrypting credential:', error);
+        showAlertDialog('Error encrypting credential. Please try again.');
+        return;
+      }
+    }
+    
+    domains[domain].credentials.push(credentialToSave);
     
     await saveData(domains);
     
     // Clear inputs
     usernameInput.value = '';
     passwordInput.value = '';
+    if (encryptCheckbox) {
+      encryptCheckbox.checked = false;
+    }
     
-    await loadAndDisplayDomains();
+    // Add just this credential item instead of full page reload
+    addCredentialItem(domain, credentialToSave);
+    await updateSecurityUI();
   } catch (error) {
-    console.error('SelectorPass: Error adding credential:', error);
     showConfirmDialog('Error adding credential. Please try again.', () => {});
   }
+}
+
+/**
+ * Prompt user for master password using a dialog
+ * @returns {Promise<string|null>} Master password or null if cancelled
+ */
+function promptForMasterPassword() {
+  return promptForMasterPasswordWithMessage('Enter your master password to encrypt this credential:', 'Encrypt');
+}
+
+/**
+ * Prompt user for master password for decryption
+ * @returns {Promise<string|null>} Master password or null if cancelled
+ */
+function promptForMasterPasswordDecrypt() {
+  return promptForMasterPasswordWithMessage('Enter your master password to remove encryption:', 'Remove Encryption');
+}
+
+
+
+/**
+ * Prompt user for master password to login
+ * @returns {Promise<string|null>} Master password or null if cancelled
+ */
+function promptForLogin() {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('confirmDialog');
+    const messageEl = dialog?.querySelector('.dialog-message');
+    const confirmBtn = document.getElementById('dialogConfirm');
+    const cancelBtn = document.getElementById('dialogCancel');
+    
+    if (!dialog || !messageEl || !confirmBtn || !cancelBtn) {
+      resolve(null);
+      return;
+    }
+    
+    // Create password input
+    const passwordInput = document.createElement('input');
+    passwordInput.type = 'password';
+    passwordInput.placeholder = 'Enter master password';
+    passwordInput.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; margin-top: 12px; font-size: 14px;';
+    
+    messageEl.textContent = 'Enter your master password to login:';
+    messageEl.appendChild(passwordInput);
+    
+    cancelBtn.style.display = 'inline-block';
+    confirmBtn.textContent = 'Login';
+    
+    const handleConfirm = () => {
+      const password = passwordInput.value.trim();
+      dialog.close();
+      cleanup();
+      resolve(password || null);
+    };
+    
+    const handleCancel = () => {
+      dialog.close();
+      cleanup();
+      resolve(null);
+    };
+    
+    const handleKeyPress = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleConfirm();
+      }
+    };
+    
+    const cleanup = () => {
+      confirmBtn.removeEventListener('click', handleConfirm);
+      cancelBtn.removeEventListener('click', handleCancel);
+      passwordInput.removeEventListener('keypress', handleKeyPress);
+      confirmBtn.textContent = 'Delete';
+      messageEl.textContent = '';
+    };
+    
+    confirmBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', handleCancel);
+    passwordInput.addEventListener('keypress', handleKeyPress);
+    
+    dialog.showModal();
+    passwordInput.focus();
+  });
+}
+
+/**
+ * Prompt user to set up master password for first time
+ * @returns {Promise<string|null>} Master password or null if cancelled
+ */
+function promptForMasterPasswordSetup() {
+  return promptForMasterPasswordWithMessage('Set up a master password to encrypt this credential:', 'Setup');
+}
+
+/**
+ * Prompt user for new master password when changing
+ * @returns {Promise<string|null>} Master password or null if cancelled
+ */
+function promptForNewMasterPassword() {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('confirmDialog');
+    const messageEl = dialog?.querySelector('.dialog-message');
+    const confirmBtn = document.getElementById('dialogConfirm');
+    const cancelBtn = document.getElementById('dialogCancel');
+    
+    if (!dialog || !messageEl || !confirmBtn || !cancelBtn) {
+      resolve(null);
+      return;
+    }
+    
+    // Create password inputs
+    const passwordInput = document.createElement('input');
+    passwordInput.type = 'password';
+    passwordInput.placeholder = 'Enter new master password';
+    passwordInput.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; margin-top: 12px; font-size: 14px;';
+    
+    const confirmInput = document.createElement('input');
+    confirmInput.type = 'password';
+    confirmInput.placeholder = 'Confirm new master password';
+    confirmInput.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; margin-top: 8px; font-size: 14px;';
+    
+    messageEl.textContent = 'Enter your new master password:';
+    messageEl.appendChild(passwordInput);
+    messageEl.appendChild(confirmInput);
+    
+    cancelBtn.style.display = 'inline-block';
+    confirmBtn.textContent = 'Change Password';
+    
+    const handleConfirm = () => {
+      const password = passwordInput.value.trim();
+      const confirm = confirmInput.value.trim();
+      
+      if (!password) {
+        showAlertDialog('Please enter a password');
+        return;
+      }
+      
+      if (password !== confirm) {
+        showAlertDialog('Passwords do not match');
+        return;
+      }
+      
+      dialog.close();
+      cleanup();
+      resolve(password);
+    };
+    
+    const handleCancel = () => {
+      dialog.close();
+      cleanup();
+      resolve(null);
+    };
+    
+    const cleanup = () => {
+      confirmBtn.removeEventListener('click', handleConfirm);
+      cancelBtn.removeEventListener('click', handleCancel);
+      confirmBtn.textContent = 'Delete';
+      messageEl.textContent = '';
+    };
+    
+    confirmBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', handleCancel);
+    
+    dialog.showModal();
+    passwordInput.focus();
+  });
+}
+
+/**
+ * Generic prompt for master password with custom message
+ * @param {string} message - Message to display
+ * @param {string} buttonText - Text for confirm button (default: 'OK')
+ * @returns {Promise<string|null>} Master password or null if cancelled
+ */
+function promptForMasterPasswordWithMessage(message, buttonText = 'OK') {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('confirmDialog');
+    const messageEl = dialog?.querySelector('.dialog-message');
+    const confirmBtn = document.getElementById('dialogConfirm');
+    const cancelBtn = document.getElementById('dialogCancel');
+    
+    if (!dialog || !messageEl || !confirmBtn || !cancelBtn) {
+      resolve(null);
+      return;
+    }
+    
+    // Create password input
+    const passwordInput = document.createElement('input');
+    passwordInput.type = 'password';
+    passwordInput.placeholder = 'Enter master password';
+    passwordInput.style.cssText = 'width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; margin-top: 12px; font-size: 14px;';
+    
+    messageEl.textContent = message;
+    messageEl.appendChild(passwordInput);
+    
+    // Show both buttons
+    cancelBtn.style.display = 'inline-block';
+    confirmBtn.textContent = buttonText;
+    
+    const handleConfirm = () => {
+      const password = passwordInput.value.trim();
+      dialog.close();
+      cleanup();
+      resolve(password || null);
+    };
+    
+    const handleCancel = () => {
+      dialog.close();
+      cleanup();
+      resolve(null);
+    };
+    
+    const handleKeyPress = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleConfirm();
+      }
+    };
+    
+    const cleanup = () => {
+      confirmBtn.removeEventListener('click', handleConfirm);
+      cancelBtn.removeEventListener('click', handleCancel);
+      passwordInput.removeEventListener('keypress', handleKeyPress);
+      // Reset dialog
+      confirmBtn.textContent = 'Delete';
+      messageEl.textContent = '';
+    };
+    
+    confirmBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', handleCancel);
+    passwordInput.addEventListener('keypress', handleKeyPress);
+    
+    dialog.showModal();
+    passwordInput.focus();
+  });
 }
 
 function showAlertDialog(message) {
@@ -914,12 +1535,65 @@ function showConfirmDialog(message, onConfirm) {
   }
 }
 
-async function deleteCredential(domain, index) {
+function showConfirmationDialog(message) {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('confirmDialog');
+    const messageEl = dialog?.querySelector('.dialog-message');
+    const confirmBtn = document.getElementById('dialogConfirm');
+    const cancelBtn = document.getElementById('dialogCancel');
+    
+    if (!dialog || !messageEl || !confirmBtn || !cancelBtn) {
+      resolve(false);
+      return;
+    }
+    
+    messageEl.textContent = message;
+    cancelBtn.style.display = 'inline-block';
+    confirmBtn.textContent = 'OK';
+    
+    const handleConfirm = () => {
+      dialog.close();
+      cleanup();
+      resolve(true);
+    };
+    
+    const handleCancel = () => {
+      dialog.close();
+      cleanup();
+      resolve(false);
+    };
+    
+    const cleanup = () => {
+      confirmBtn.removeEventListener('click', handleConfirm);
+      cancelBtn.removeEventListener('click', handleCancel);
+      confirmBtn.textContent = 'Delete';
+    };
+    
+    confirmBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', handleCancel);
+    
+    dialog.showModal();
+  });
+}
+
+async function deleteCredential(domain, credentialId) {
   try {
+    console.log('SelectorPass: deleteCredential called with:', { domain, credentialId, type: typeof credentialId });
+    
     const domains = await loadData();
     
-    if (!domains[domain] || !domains[domain].credentials || !domains[domain].credentials[index]) {
-      console.error('SelectorPass: Invalid domain or credential index');
+    if (!domains[domain] || !domains[domain].credentials) {
+      console.error('SelectorPass: Invalid domain');
+      return;
+    }
+    
+    console.log('SelectorPass: Available credentials:', domains[domain].credentials.map(c => ({ id: c.id, username: c.username })));
+    
+    const index = findCredentialIndex(domains[domain].credentials, credentialId);
+    console.log('SelectorPass: findCredentialIndex returned:', index);
+    
+    if (index === -1) {
+      console.error('SelectorPass: Credential not found - credentialId:', credentialId);
       return;
     }
     
@@ -931,7 +1605,9 @@ async function deleteCredential(domain, index) {
         try {
           domains[domain].credentials.splice(index, 1);
           await saveData(domains);
-          await loadAndDisplayDomains();
+          
+          // Remove just this credential item instead of full page reload
+          removeCredentialItem(domain, credentialId);
         } catch (error) {
           console.error('SelectorPass: Error deleting credential:', error);
           showConfirmDialog('Error deleting credential. Please try again.', () => {});
@@ -1091,9 +1767,9 @@ function cancelDomainEdit(domain) {
   }
 }
 
-function editCredential(domain, index) {
+function editCredential(domain, credentialId) {
   try {
-    const credentialItem = document.querySelector(`[data-domain="${domain}"][data-index="${index}"]`)?.closest('.credential-item');
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
     if (!credentialItem) {
       console.error('SelectorPass: Credential item not found for editing');
       return;
@@ -1116,9 +1792,9 @@ function editCredential(domain, index) {
   }
 }
 
-async function saveCredential(domain, index) {
+async function saveCredential(domain, credentialId) {
   try {
-    const credentialItem = document.querySelector(`[data-domain="${domain}"][data-index="${index}"]`)?.closest('.credential-item');
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
     if (!credentialItem) {
       console.error('SelectorPass: Credential item not found');
       return;
@@ -1147,27 +1823,67 @@ async function saveCredential(domain, index) {
     
     const domains = await loadData();
     
-    if (!domains[domain] || !domains[domain].credentials || !domains[domain].credentials[index]) {
-      console.error('SelectorPass: Invalid domain or credential index');
+    if (!domains[domain] || !domains[domain].credentials) {
+      console.error('SelectorPass: Invalid domain');
       return;
     }
     
-    domains[domain].credentials[index] = {
+    const index = findCredentialIndex(domains[domain].credentials, credentialId);
+    if (index === -1) {
+      console.error('SelectorPass: Credential not found');
+      return;
+    }
+    
+    const originalCredential = domains[domain].credentials[index];
+    let credentialToSave = {
+      id: originalCredential.id, // Preserve the credential ID
       username: newUsername.trim(),
       password: newPassword.trim()
     };
     
+    // If original credential was encrypted, keep it encrypted
+    if (originalCredential.encrypted) {
+      // If master password not in memory, prompt for it
+      const isLoggedIn = await isMasterPasswordSet();
+      if (!isLoggedIn) {
+        const masterPassword = await promptForMasterPassword();
+        if (!masterPassword) {
+          return; // User cancelled
+        }
+        
+        const isValid = await verifyMasterPassword(masterPassword);
+        if (!isValid) {
+          showAlertDialog('Incorrect master password');
+          return;
+        }
+        
+        await setMasterPassword(masterPassword, 'browser');
+      }
+      
+      try {
+        credentialToSave = await encryptCredential(credentialToSave);
+      } catch (error) {
+        console.error('SelectorPass: Error encrypting credential:', error);
+        showAlertDialog('Error encrypting credential. Please try again.');
+        return;
+      }
+    }
+    
+    domains[domain].credentials[index] = credentialToSave;
+    
     await saveData(domains);
-    await loadAndDisplayDomains();
+    
+    // Update just this credential item instead of full page reload
+    updateCredentialItem(domain, credentialId, credentialToSave);
   } catch (error) {
     console.error('SelectorPass: Error saving credential:', error);
     showConfirmDialog('Error saving credential. Please try again.', () => {});
   }
 }
 
-function cancelCredential(domain, index) {
+function cancelCredential(domain, credentialId) {
   try {
-    const credentialItem = document.querySelector(`[data-domain="${domain}"][data-index="${index}"]`)?.closest('.credential-item');
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
     if (!credentialItem) {
       console.error('SelectorPass: Credential item not found for cancel');
       return;
@@ -1188,9 +1904,9 @@ function cancelCredential(domain, index) {
   }
 }
 
-function togglePassword(domain, index) {
+async function togglePassword(domain, credentialId) {
   try {
-    const credentialItem = document.querySelector(`[data-domain="${domain}"][data-index="${index}"]`)?.closest('.credential-item');
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
     if (!credentialItem) {
       console.error('SelectorPass: Credential item not found for password toggle');
       return;
@@ -1204,6 +1920,33 @@ function togglePassword(domain, index) {
       return;
     }
     
+    // Check if this is an encrypted credential and we're logged out
+    const domains = await loadData();
+    const index = findCredentialIndex(domains[domain]?.credentials || [], credentialId);
+    const credential = domains[domain]?.credentials[index];
+    
+    if (credential?.encrypted && !passwordInput.value && passwordInput.type === 'password') {
+      // This is an encrypted credential with empty field - prompt for master password
+      const isLoggedIn = await isMasterPasswordSet();
+      if (!isLoggedIn) {
+        const masterPassword = await promptForMasterPasswordWithMessage('Enter your master password to view this encrypted password:', 'View Password');
+        if (!masterPassword) {
+          return; // User cancelled
+        }
+        
+        const isValid = await verifyMasterPassword(masterPassword);
+        if (!isValid) {
+          showAlertDialog('Incorrect master password');
+          return;
+        }
+        
+        await setMasterPassword(masterPassword, 'browser');
+        await updateSecurityUI(); // This will refresh the forms with decrypted values
+        return;
+      }
+    }
+    
+    // Normal toggle behavior
     if (passwordInput.type === 'password') {
       passwordInput.type = 'text';
       toggleBtn.textContent = '🙈';
@@ -1218,72 +1961,68 @@ function togglePassword(domain, index) {
 
 function setupDragAndDrop(container) {
   let draggedItem = null;
-  let draggedIndex = null;
   let draggedDomain = null;
   
   container.addEventListener('dragstart', (e) => {
     const credentialItem = e.target.closest('.credential-item');
     if (credentialItem) {
       draggedItem = credentialItem;
-      draggedIndex = parseInt(credentialItem.dataset.index);
       draggedDomain = credentialItem.dataset.domain;
       credentialItem.style.opacity = '0.5';
-
     }
   });
   
-  container.addEventListener('dragend', (e) => {
-    const credentialItem = e.target.closest('.credential-item');
-    if (credentialItem) {
-      credentialItem.style.opacity = '1';
+  container.addEventListener('dragend', () => {
+    if (draggedItem) {
+      draggedItem.style.opacity = '1';
       draggedItem = null;
-      draggedIndex = null;
       draggedDomain = null;
     }
+    container.querySelectorAll('.credential-item').forEach(item => {
+      item.style.borderTop = '';
+    });
   });
   
   container.addEventListener('dragover', (e) => {
     e.preventDefault();
+    if (!draggedItem) return;
+    
+    container.querySelectorAll('.credential-item').forEach(item => {
+      item.style.borderTop = '';
+    });
+    
     const credentialItem = e.target.closest('.credential-item');
-    if (credentialItem && credentialItem !== draggedItem) {
+    if (credentialItem && credentialItem !== draggedItem && credentialItem.dataset.domain === draggedDomain) {
       credentialItem.style.borderTop = '2px solid #007bff';
-    }
-  });
-  
-  container.addEventListener('dragleave', (e) => {
-    const credentialItem = e.target.closest('.credential-item');
-    if (credentialItem) {
-      credentialItem.style.borderTop = '';
     }
   });
   
   container.addEventListener('drop', async (e) => {
     e.preventDefault();
     
-    // Clear all border indicators
     container.querySelectorAll('.credential-item').forEach(item => {
       item.style.borderTop = '';
     });
     
+    if (!draggedItem) return;
+    
     const dropTarget = e.target.closest('.credential-item');
-    if (!dropTarget || !draggedItem || dropTarget === draggedItem) {
-
-      return;
+    const credentialsContainer = container.querySelector(`[id="credentials-${draggedDomain}"]`);
+    
+    if (!credentialsContainer) return;
+    
+    const allItems = Array.from(credentialsContainer.querySelectorAll('.credential-item'));
+    const fromIndex = allItems.indexOf(draggedItem);
+    
+    let toIndex;
+    if (dropTarget && dropTarget.dataset.domain === draggedDomain) {
+      toIndex = allItems.indexOf(dropTarget);
+    } else {
+      toIndex = allItems.length;
     }
     
-    const targetIndex = parseInt(dropTarget.dataset.index);
-    const targetDomain = dropTarget.dataset.domain;
-    
-    // Only allow reordering within the same domain
-    if (draggedDomain !== targetDomain) {
-
-      return;
-    }
-    
-
-    
-    if (draggedIndex !== targetIndex) {
-      await reorderCredentials(draggedDomain, draggedIndex, targetIndex);
+    if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+      await reorderCredentials(draggedDomain, fromIndex, toIndex);
     }
   });
 }
@@ -1291,27 +2030,27 @@ function setupDragAndDrop(container) {
 async function reorderCredentials(domain, fromIndex, toIndex) {
   try {
     const domains = await loadData();
+    const credentials = domains[domain]?.credentials;
     
-    if (!domains[domain] || !domains[domain].credentials) {
-      console.error('SelectorPass: Invalid domain for reordering');
-      return;
-    }
+    if (!credentials || fromIndex < 0 || fromIndex >= credentials.length) return;
     
-    const credentials = domains[domain].credentials;
+    toIndex = Math.max(0, Math.min(toIndex, credentials.length));
     
-    if (fromIndex < 0 || fromIndex >= credentials.length || toIndex < 0 || toIndex >= credentials.length) {
-      console.error('SelectorPass: Invalid indices for reordering');
-      return;
-    }
-    
-    // Remove item from original position
     const [movedItem] = credentials.splice(fromIndex, 1);
-    
-    // Insert at new position
-    credentials.splice(toIndex, 0, movedItem);
+    const adjustedToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+    credentials.splice(adjustedToIndex, 0, movedItem);
     
     await saveData(domains);
-    await loadAndDisplayDomains();
+    
+    // Update just the credentials container instead of full reload
+    const credentialsContainer = document.querySelector(`[id="credentials-${domain}"]`);
+    if (credentialsContainer) {
+      credentialsContainer.replaceChildren();
+      credentials.forEach((cred, index) => {
+        const credItem = createCredentialItem(domain, cred, index);
+        credentialsContainer.appendChild(credItem);
+      });
+    }
   } catch (error) {
     console.error('SelectorPass: Error reordering credentials:', error);
   }
@@ -1337,3 +2076,741 @@ async function deleteDomain(domain) {
     console.error('SelectorPass: Error in deleteDomain:', error);
   }
 }
+
+// ============================================================================
+// SECURITY SECTION
+// ============================================================================
+
+/**
+ * Setup security section UI and state
+ */
+async function setupSecuritySection() {
+  try {
+    await updateSecurityUI();
+  } catch (error) {
+    console.error('SelectorPass: Error setting up security section:', error);
+  }
+}
+
+/**
+ * Setup security event listeners
+ */
+function setupSecurityEventListeners() {
+  try {
+    const setupMasterPasswordBtn = document.getElementById('setupMasterPasswordBtn');
+    if (setupMasterPasswordBtn) {
+      setupMasterPasswordBtn.addEventListener('click', () => {
+        document.getElementById('setupMasterPasswordSection').style.display = 'none';
+        document.getElementById('masterPasswordSection').style.display = 'block';
+        document.getElementById('masterPassword').focus();
+      });
+    }
+    
+
+    
+    const changeMasterPasswordBtn = document.getElementById('changeMasterPasswordBtn');
+    if (changeMasterPasswordBtn) {
+      changeMasterPasswordBtn.addEventListener('click', handleChangePassword);
+    }
+    
+    const resetMasterPasswordBtn = document.getElementById('resetMasterPasswordBtn');
+    if (resetMasterPasswordBtn) {
+      resetMasterPasswordBtn.addEventListener('click', handleResetMasterPassword);
+    }
+    
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) {
+      loginBtn.addEventListener('click', handleLogin);
+    }
+    
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', handleLogout);
+    }
+    
+
+    
+    const setMasterPasswordBtn = document.getElementById('setMasterPasswordBtn');
+    if (setMasterPasswordBtn) {
+      setMasterPasswordBtn.addEventListener('click', handleSetMasterPassword);
+    }
+    
+
+    
+
+    
+
+    
+
+    
+
+  } catch (error) {
+    console.error('SelectorPass: Error setting up security event listeners:', error);
+  }
+}
+
+/**
+ * Update security UI based on current state
+ */
+async function updateSecurityUI() {
+  try {
+    const settings = await getSecuritySettings();
+    const isLoggedIn = await isMasterPasswordSet();
+    
+    const setupSection = document.getElementById('setupMasterPasswordSection');
+    const existingSection = document.getElementById('existingMasterPasswordSection');
+    const statusText = document.getElementById('statusText');
+    const masterPasswordSection = document.getElementById('masterPasswordSection');
+    const unlockSection = document.getElementById('unlockSection');
+
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    // Update login status indicator
+    if (statusText) {
+      if (isLoggedIn) {
+        statusText.textContent = '🔓 Logged in';
+        statusText.className = 'status-indicator logged-in';
+      } else {
+        statusText.textContent = '🚫 Logged out';
+        statusText.className = 'status-indicator logged-out';
+      }
+    }
+    
+    // Show appropriate sections based on master password state
+    if (settings.masterPasswordSet) {
+      if (setupSection) setupSection.style.display = 'none';
+      if (existingSection) existingSection.style.display = 'block';
+
+      
+      // Show login/logout buttons based on login state
+      if (isLoggedIn) {
+        if (loginBtn) loginBtn.style.display = 'none';
+        if (logoutBtn) logoutBtn.style.display = 'inline-block';
+      } else {
+        if (loginBtn) loginBtn.style.display = 'inline-block';
+        if (logoutBtn) logoutBtn.style.display = 'none';
+      }
+    } else {
+      if (setupSection) setupSection.style.display = 'block';
+      if (existingSection) existingSection.style.display = 'none';
+
+      if (loginBtn) loginBtn.style.display = 'none';
+      if (logoutBtn) logoutBtn.style.display = 'none';
+    }
+    
+    // Refresh domains to update encrypted credential forms
+    await loadAndDisplayDomains();
+
+  } catch (error) {
+    console.error('SelectorPass: Error updating security UI:', error);
+  }
+}
+
+function showSection(element) {
+  if (element) element.style.display = 'block';
+}
+
+function hideSection(element) {
+  if (element) element.style.display = 'none';
+}
+
+
+
+/**
+ * Handle setting master password
+ */
+async function handleSetMasterPassword() {
+  try {
+    const masterPassword = document.getElementById('masterPassword');
+    const confirmPassword = document.getElementById('confirmPassword');
+    
+    if (!masterPassword || !confirmPassword) return;
+    
+    const password = masterPassword.value.trim();
+    const confirm = confirmPassword.value.trim();
+    
+    if (!password) {
+      showAlertDialog('Please enter a master password');
+      return;
+    }
+    
+    if (password.length < 8) {
+      showAlertDialog('Master password must be at least 8 characters');
+      return;
+    }
+    
+    if (password !== confirm) {
+      showAlertDialog('Passwords do not match');
+      return;
+    }
+    
+    // Set master password hash
+    await setMasterPasswordHash(password);
+    await setMasterPassword(password, 'browser');
+    
+    // Clear form and hide setup section
+    masterPassword.value = '';
+    confirmPassword.value = '';
+    document.getElementById('masterPasswordSection').style.display = 'none';
+    
+    await updateSecurityUI();
+    showAlertDialog('Master password set successfully!');
+  } catch (error) {
+    console.error('SelectorPass: Error setting master password:', error);
+    showAlertDialog('Error setting master password. Please try again.');
+  }
+}
+
+
+
+
+
+
+
+
+
+/**
+ * Re-encrypt all credentials with new master password
+ */
+async function reencryptAllCredentials(newMasterPassword) {
+  try {
+    const domains = await loadData();
+    const oldMasterPassword = await getMasterPassword();
+    
+    if (!oldMasterPassword) {
+      throw new Error('Current master password not available');
+    }
+    
+    await Promise.all(
+      Object.entries(domains).map(async ([domain, config]) => {
+        if (config.credentials) {
+          config.credentials = await Promise.all(
+            config.credentials.map(async (cred) => {
+              if (cred.encrypted) {
+                const decrypted = await decryptCredentialDirectly(cred, oldMasterPassword);
+                const reencrypted = await encryptData(decrypted.password, newMasterPassword);
+                return {
+                  username: cred.username,
+                  password: reencrypted,
+                  encrypted: true
+                };
+              }
+              return cred;
+            })
+          );
+        }
+      })
+    );
+    
+    await saveData(domains);
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Handle change master password
+ */
+async function handleChangePassword() {
+  try {
+    const newMasterPassword = await promptForNewMasterPassword();
+    if (!newMasterPassword) {
+      return; // User cancelled
+    }
+    
+    if (newMasterPassword.length < 8) {
+      showAlertDialog('Master password must be at least 8 characters');
+      return;
+    }
+    
+    // Re-encrypt all existing encrypted credentials with new password
+    await reencryptAllCredentials(newMasterPassword);
+    
+    // Update master password hash
+    await setMasterPasswordHash(newMasterPassword);
+    await setMasterPassword(newMasterPassword);
+    
+    await updateSecurityUI();
+    showAlertDialog('Master password changed successfully!');
+  } catch (error) {
+    console.error('SelectorPass: Error changing master password:', error);
+    showAlertDialog('Error changing master password. Please try again.');
+  }
+}
+
+/**
+ * Re-encrypt all credentials with new master password
+ * @param {string} newMasterPassword - New master password
+ */
+async function reencryptAllCredentials(newMasterPassword) {
+  try {
+    const domains = await loadData();
+    const oldMasterPassword = await getMasterPassword();
+    
+    if (!oldMasterPassword) {
+      throw new Error('Current master password not available');
+    }
+    
+    // Process all domains and credentials functionally
+    await Promise.all(
+      Object.entries(domains).map(async ([domain, config]) => {
+        if (config.credentials) {
+          config.credentials = await Promise.all(
+            config.credentials.map(async (cred) => {
+              if (cred.encrypted) {
+                const decrypted = await decryptCredentialDirectly(cred, oldMasterPassword);
+                const reencrypted = await encryptData(decrypted.password, newMasterPassword);
+                return {
+                  username: cred.username,
+                  password: reencrypted,
+                  encrypted: true
+                };
+              }
+              return cred;
+            })
+          );
+        }
+      })
+    );
+    
+    await saveData(domains);
+  } catch (error) {
+    console.error('SelectorPass: Error re-encrypting credentials:', error);
+    throw error;
+  }
+}
+
+/**
+ * Handle reset master password - removes all encrypted credentials
+ */
+async function handleResetMasterPassword() {
+  try {
+    const confirmed = await showResetMasterPasswordDialog();
+    if (!confirmed) {
+      return; // User cancelled
+    }
+    
+    // Remove all encrypted credentials and reset master password
+    await resetMasterPasswordAndCredentials();
+    
+    await updateSecurityUI();
+    await loadAndDisplayDomains();
+    showAlertDialog('Master password reset successfully. All encrypted credentials have been removed.');
+  } catch (error) {
+    console.error('SelectorPass: Error resetting master password:', error);
+    showAlertDialog('Error resetting master password. Please try again.');
+  }
+}
+
+/**
+ * Show reset master password confirmation dialog
+ * @returns {Promise<boolean>} True if confirmed
+ */
+function showResetMasterPasswordDialog() {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('confirmDialog');
+    const messageEl = dialog?.querySelector('.dialog-message');
+    const confirmBtn = document.getElementById('dialogConfirm');
+    const cancelBtn = document.getElementById('dialogCancel');
+    
+    if (!dialog || !messageEl || !confirmBtn || !cancelBtn) {
+      resolve(false);
+      return;
+    }
+    
+    // Clear existing content
+    messageEl.textContent = '';
+    
+    // Create warning header
+    const warningHeader = document.createElement('strong');
+    warningHeader.textContent = '⚠️ Reset Master Password';
+    
+    // Create warning text
+    const warningText1 = document.createTextNode('This will permanently delete ALL encrypted credentials.');
+    const warningText2 = document.createTextNode('Unencrypted credentials will remain safe.');
+    const warningText3 = document.createTextNode('This action cannot be undone.');
+    
+    // Assemble message
+    messageEl.appendChild(warningHeader);
+    messageEl.appendChild(document.createElement('br'));
+    messageEl.appendChild(document.createElement('br'));
+    messageEl.appendChild(warningText1);
+    messageEl.appendChild(document.createElement('br'));
+    messageEl.appendChild(warningText2);
+    messageEl.appendChild(document.createElement('br'));
+    messageEl.appendChild(document.createElement('br'));
+    messageEl.appendChild(warningText3);
+    
+    cancelBtn.style.display = 'inline-block';
+    confirmBtn.textContent = 'Reset Master Password';
+    confirmBtn.style.background = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
+    
+    const handleConfirm = () => {
+      dialog.close();
+      cleanup();
+      resolve(true);
+    };
+    
+    const handleCancel = () => {
+      dialog.close();
+      cleanup();
+      resolve(false);
+    };
+    
+    const cleanup = () => {
+      confirmBtn.removeEventListener('click', handleConfirm);
+      cancelBtn.removeEventListener('click', handleCancel);
+      confirmBtn.textContent = 'Delete';
+      confirmBtn.style.background = '';
+      messageEl.textContent = '';
+    };
+    
+    confirmBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', handleCancel);
+    
+    dialog.showModal();
+  });
+}
+
+/**
+ * Reset master password and remove all encrypted credentials
+ */
+async function resetMasterPasswordAndCredentials() {
+  try {
+    const domains = await loadData();
+    
+    // Remove all encrypted credentials from each domain using functional approach
+    Object.values(domains).forEach(config => {
+      if (config.credentials) {
+        config.credentials = config.credentials.filter(cred => !cred.encrypted);
+      }
+    });
+    
+    await saveData(domains);
+    await chrome.storage.local.remove(['securitySettings']);
+    await clearMasterPassword();
+  } catch (error) {
+    console.error('SelectorPass: Error resetting master password and credentials:', error);
+    throw error;
+  }
+}
+
+/**
+ * Setup dynamic tooltip positioning
+ */
+function setupTooltip(button) {
+  const tooltip = button.querySelector('.tooltip-text');
+  if (!tooltip) return;
+  
+  button.addEventListener('mouseenter', () => {
+    const rect = button.getBoundingClientRect();
+    tooltip.style.left = `${rect.left + rect.width / 2}px`;
+    tooltip.style.top = `${rect.top - 10}px`;
+    tooltip.style.transform = 'translate(-50%, -100%)';
+    tooltip.classList.add('show');
+  });
+  
+  button.addEventListener('mouseleave', () => {
+    tooltip.classList.remove('show');
+  });
+}
+
+/**
+ * Encrypt a single credential
+ */
+async function encryptSingleCredential(domain, credentialId) {
+  try {
+    const settings = await getSecuritySettings();
+    if (!settings.masterPasswordSet) {
+      // First time encryption - set up master password
+      const newMasterPassword = await promptForMasterPasswordSetup();
+      if (!newMasterPassword) {
+        return; // User cancelled
+      }
+      
+      if (newMasterPassword.length < 8) {
+        showAlertDialog('Master password must be at least 8 characters');
+        return;
+      }
+      
+      await setMasterPasswordHash(newMasterPassword);
+      await setMasterPassword(newMasterPassword);
+    }
+    
+    // Check if master password is available
+    const isLoggedIn = await isMasterPasswordSet();
+    console.log('SelectorPass: Encrypt check - logged in:', isLoggedIn);
+    if (!isLoggedIn) {
+      showAlertDialog('Please login first to encrypt credentials.');
+      return;
+    }
+    
+    // Show confirmation dialog
+    const confirmed = await showConfirmationDialog('Encrypt this credential?');
+    if (!confirmed) {
+      return;
+    }
+    
+    const domains = await loadData();
+    const index = findCredentialIndex(domains[domain]?.credentials || [], credentialId);
+    const credential = domains[domain]?.credentials[index];
+    
+    if (!credential || credential.encrypted) {
+      return; // Already encrypted or doesn't exist
+    }
+    
+    // Encrypt the credential
+    const encryptedCredential = await encryptCredential(credential);
+    domains[domain].credentials[index] = encryptedCredential;
+    
+    await saveData(domains);
+    
+    // Update just this credential item instead of full page reload
+    updateCredentialItem(domain, credentialId, encryptedCredential);
+    await updateSecurityUI();
+  } catch (error) {
+    console.error('SelectorPass: Error encrypting credential:', error);
+    showAlertDialog('Error encrypting credential. Please try again.');
+  }
+}
+
+/**
+ * Decrypt a single credential
+ */
+async function decryptSingleCredential(domain, credentialId) {
+  try {
+    // Check if master password is available
+    const isLoggedIn = await isMasterPasswordSet();
+    if (!isLoggedIn) {
+      showAlertDialog('Please login first to remove encryption.');
+      return;
+    }
+    
+    // Show confirmation dialog
+    const confirmed = await showConfirmationDialog('Remove encryption from this credential?');
+    if (!confirmed) {
+      return;
+    }
+    
+    const domains = await loadData();
+    const index = findCredentialIndex(domains[domain]?.credentials || [], credentialId);
+    const credential = domains[domain]?.credentials[index];
+    
+    if (!credential || !credential.encrypted) {
+      return; // Not encrypted or doesn't exist
+    }
+    
+    // Decrypt the credential
+    const decryptedCredential = await decryptCredential(credential);
+    domains[domain].credentials[index] = decryptedCredential;
+    
+    await saveData(domains);
+    
+    // Update just this credential item instead of full page reload
+    updateCredentialItem(domain, credentialId, decryptedCredential);
+    await updateSecurityUI();
+  } catch (error) {
+    console.error('SelectorPass: Error decrypting credential:', error);
+    showAlertDialog('Error decrypting credential. Please try again.');
+  }
+}
+
+/**
+ * Check if there are any unencrypted credentials
+ */
+async function checkForUnencryptedCredentials() {
+  try {
+    const domains = await loadData();
+    
+    return Object.values(domains).some(config => 
+      config.credentials?.some(cred => !cred.encrypted)
+    );
+  } catch (error) {
+    console.error('SelectorPass: Error checking for unencrypted credentials:', error);
+    return false;
+  }
+}
+
+/**
+ * Check login status and update UI accordingly
+ */
+async function checkLoginStatus() {
+  try {
+    const isLoggedIn = await isMasterPasswordSet();
+    if (isLoggedIn) {
+      await updateSecurityUI();
+    }
+  } catch (error) {
+    // Silent error handling
+  }
+}
+/**
+ * Decrypt credential for editing if logged in
+ * @param {Object} credential - Encrypted credential
+ * @returns {Promise<Object|null>} Decrypted credential or null
+ */
+async function decryptCredentialForEdit(credential) {
+  try {
+    if (!credential.encrypted) {
+      return credential;
+    }
+    
+    const isLoggedIn = await isMasterPasswordSet();
+    if (!isLoggedIn) {
+      return null;
+    }
+    
+    const decrypted = await decryptCredential(credential);
+    return decrypted;
+  } catch (error) {
+    console.error('SelectorPass: Error in decryptCredentialForEdit:', error);
+    return null;
+  }
+}
+/**
+ * Handle login button click
+ */
+async function handleLogin() {
+  try {
+    const masterPassword = await promptForLogin();
+    if (!masterPassword) {
+      return; // User cancelled
+    }
+    
+    const isValid = await verifyMasterPassword(masterPassword);
+    if (!isValid) {
+      showAlertDialog('Incorrect master password');
+      return;
+    }
+    
+    await setMasterPassword(masterPassword, 'browser');
+    await updateSecurityUI();
+  } catch (error) {
+    console.error('SelectorPass: Error handling login:', error);
+    showAlertDialog('Error logging in. Please try again.');
+  }
+}
+
+/**
+ * Handle logout button click
+ */
+async function handleLogout() {
+  try {
+    const confirmed = await showConfirmationDialog('Are you sure you want to logout? You will need to re-enter your master password to access encrypted credentials.');
+    if (!confirmed) {
+      return;
+    }
+    
+    await clearMasterPassword();
+    await updateSecurityUI();
+  } catch (error) {
+    console.error('SelectorPass: Error handling logout:', error);
+  }
+}
+
+/**
+ * Update a single credential item without full page reload
+ * @param {string} domain - Domain name
+ * @param {string} credentialId - Credential ID
+ * @param {Object} updatedCredential - Updated credential data
+ */
+function updateCredentialItem(domain, credentialId, updatedCredential) {
+  try {
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
+    if (!credentialItem) return;
+    
+    const credentialsContainer = credentialItem.parentElement;
+    const index = Array.from(credentialsContainer.children).indexOf(credentialItem);
+    
+    // Create new credential item
+    const newCredentialItem = createCredentialItem(domain, updatedCredential, index);
+    
+    // Replace old item with new one
+    credentialsContainer.replaceChild(newCredentialItem, credentialItem);
+  } catch (error) {
+    console.error('SelectorPass: Error updating credential item:', error);
+  }
+}
+
+/**
+ * Remove a single credential item without full page reload
+ * @param {string} domain - Domain name
+ * @param {string} credentialId - Credential ID to remove
+ */
+function removeCredentialItem(domain, credentialId) {
+  try {
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
+    if (credentialItem) {
+      credentialItem.remove();
+      
+      // Update credentials count in title
+      const credentialsSection = document.querySelector(`#credentials-${domain}`)?.closest('.credentials-section');
+      const title = credentialsSection?.querySelector('h4');
+      if (title) {
+        const currentCount = credentialsSection.querySelectorAll('.credential-item').length;
+        title.textContent = `Credentials (${currentCount})`;
+      }
+    }
+  } catch (error) {
+    console.error('SelectorPass: Error removing credential item:', error);
+  }
+}
+
+/**
+ * Add a single credential item without full page reload
+ * @param {string} domain - Domain name
+ * @param {Object} newCredential - New credential data
+ */
+function addCredentialItem(domain, newCredential) {
+  try {
+    const credentialsContainer = document.querySelector(`#credentials-${domain}`);
+    if (!credentialsContainer) return;
+    
+    const index = credentialsContainer.children.length;
+    const newCredentialItem = createCredentialItem(domain, newCredential, index);
+    
+    credentialsContainer.appendChild(newCredentialItem);
+    
+    // Update credentials count in title
+    const credentialsSection = credentialsContainer.closest('.credentials-section');
+    const title = credentialsSection?.querySelector('h4');
+    if (title) {
+      const currentCount = credentialsContainer.children.length;
+      title.textContent = `Credentials (${currentCount})`;
+    }
+  } catch (error) {
+    console.error('SelectorPass: Error adding credential item:', error);
+  }
+}
+
+
+
+/**
+ * Setup connection to background script for login status updates
+ */
+function setupLoginStatusConnection() {
+  try {
+    const port = chrome.runtime.connect({ name: 'loginStatus' });
+    
+    port.onMessage.addListener(message => {
+      if (message.action === 'loginStatusChanged') {
+        updateSecurityUI();
+      }
+    });
+    
+    port.onDisconnect.addListener(() => {
+
+      // Attempt to reconnect after a short delay
+      setTimeout(setupLoginStatusConnection, 1000);
+    });
+    
+
+  } catch (error) {
+
+    // Retry connection after delay
+    setTimeout(setupLoginStatusConnection, 2000);
+  }
+}
+
+})();
