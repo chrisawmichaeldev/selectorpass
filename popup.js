@@ -424,6 +424,14 @@ async function fillCredentials(domain, domainConfig, credIndex) {
           // Store in session for future use
           await setMasterPassword(masterPassword, 'browser');
           
+          // Broadcast login status change to all contexts
+          try {
+            await chrome.runtime.sendMessage({ action: 'setMasterPassword', password: masterPassword, context: 'browser' });
+
+          } catch (error) {
+
+          }
+          
           // Update login status indicator
           await updateLoginStatus();
         }
@@ -433,7 +441,7 @@ async function fillCredentials(domain, domainConfig, credIndex) {
         username = decrypted.username;
         password = decrypted.password;
       } catch (error) {
-        console.error('SelectorPass: Error decrypting credential:', error);
+
         showErrorMessage('Error decrypting credential. Please try again.', false);
         return;
       }
@@ -633,13 +641,21 @@ async function updateLoginStatus() {
 function setupLoginStatusConnection() {
   try {
     const port = chrome.runtime.connect({ name: 'loginStatus' });
+    
     port.onMessage.addListener(message => {
       if (message.action === 'loginStatusChanged') {
+
         updateLoginStatus();
       }
     });
+    
+    port.onDisconnect.addListener(() => {
+
+    });
+    
+
   } catch (error) {
-    // Silent error handling
+
   }
 }
 

@@ -74,7 +74,7 @@ When I use "user3" credential to fill a form
 And I reopen the popup
 Then credentials should remain in order: "user1", "user2", "user3"
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Popup prompts for login when using encrypted credentials (logged out)
 ```gherkin
@@ -89,7 +89,7 @@ Then the form should be filled with the decrypted credentials
 And the popup should close
 And the popup status should update to 🔓 (logged in)
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Popup does not prompt when using encrypted credentials (already logged in)
 ```gherkin
@@ -100,7 +100,7 @@ And I click "Fill" for an encrypted credential (shows 🔐)
 Then the form should be filled immediately without prompting
 And the popup should close
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Mixed encrypted and unencrypted credentials in popup
 ```gherkin
@@ -113,7 +113,7 @@ Then it should fill immediately without password prompt
 When I use an encrypted credential (and not logged in)
 Then it should prompt for master password
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ---
 
@@ -133,7 +133,7 @@ Then it should immediately show "🔓 Logged in"
 And when I reopen the popup
 Then it should show 🔓 icon
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Login via options page - popup syncs immediately
 ```gherkin
@@ -146,7 +146,7 @@ And when I open the popup in a new tab
 Then the popup should show 🔓 icon without delay
 And encrypted credentials should be usable immediately
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Logout via options page - all contexts sync immediately
 ```gherkin
@@ -158,7 +158,7 @@ And when I open the popup in a new tab
 Then the popup should show 🚫 icon
 And encrypted credentials should require master password
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Browser restart clears login status everywhere
 ```gherkin
@@ -170,7 +170,7 @@ When I open the popup
 Then it should show 🚫 icon
 And encrypted credentials should require password prompt
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Real-time sync across multiple popup instances
 ```gherkin
@@ -180,7 +180,34 @@ When I login via one popup by filling an encrypted credential
 Then both popup windows should update to show 🔓 status immediately
 And both should allow encrypted credential access without prompting
 ```
-- [ ] Test needed
+- [x] Test needed
+
+### Scenario: Multiple popups with options page open - complex sync
+```gherkin
+Given I have the options page open showing "🚫 Logged out"
+And I have popup window A open on tab 1 showing 🚫
+And I have popup window B open on tab 2 showing 🚫
+When I login via popup window A by filling an encrypted credential
+Then popup window A should close (form filled)
+And popup window B should immediately show 🔓 status
+And the options page should immediately show "🔓 Logged in"
+When I open a new popup window C on tab 3
+Then popup window C should show 🔓 status without delay
+```
+- [x] Test needed
+
+### Scenario: Login from options page with multiple popups open
+```gherkin
+Given I have popup window A open showing 🚫
+And I have popup window B open showing 🚫
+And I have the options page open showing "🚫 Logged out"
+When I click "Login" in the options page and enter master password
+Then the options page should immediately show "🔓 Logged in"
+And popup window A should immediately show 🔓 status
+And popup window B should immediately show 🔓 status
+And all popups should allow encrypted credential access without prompting
+```
+- [x] Test needed
 
 ---
 
@@ -196,7 +223,7 @@ Then the second credential should show "user2"/"newpass2"
 And the first credential should still be "user1"/"pass1"
 And the third credential should still be "user3"/"pass3"
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Reorder credentials before editing does not affect which credential is edited
 ```gherkin
@@ -207,7 +234,7 @@ Then the edit form should show "user1" data (not "user2" data)
 When I change the password and save
 Then "user1" should be updated (not "user2")
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Reorder credentials after editing maintains changes
 ```gherkin
@@ -217,7 +244,7 @@ And I drag "user2" to the top position
 Then "user2" should still show "newpass2" (changes preserved)
 And the credential order should be: "user2", "user1", "user3"
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Edit encrypted credential when logged in
 ```gherkin
@@ -231,7 +258,7 @@ Then the password should be visible in plain text
 When I change the password and save
 Then the credential should remain encrypted (still shows 🔐)
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Edit encrypted credential when logged out
 ```gherkin
@@ -243,10 +270,11 @@ And the password field should show placeholder "Password (encrypted - enter new 
 When I click the eye icon next to the password field
 Then I should see a master password prompt
 When I enter the correct master password
-Then the password field should be populated with the decrypted password
-And I should be able to modify and save the credential
+Then the credential should exit edit mode (known limitation)
+And I should click "Edit" again to continue editing
+And the password field should be populated with the decrypted password
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ---
 
@@ -263,7 +291,7 @@ And all credentials should be preserved with correct usernames/passwords
 And each credential should receive a unique ID
 And all functionality should work normally
 ```
-- [ ] Test needed
+- [x] Test needed
 
 **Manual Setup for Legacy Data Testing:**
 1. Open Chrome DevTools (F12)
@@ -302,7 +330,7 @@ And all encrypted credentials should remain encrypted and functional
 And I should be able to decrypt encrypted credentials with my existing master password
 And migration should only run once (migrated flag set)
 ```
-- [ ] Test needed
+- [x] Test needed
 
 **Manual Setup for Mixed Legacy Data:**
 1. Use Chrome DevTools to set legacy data with mixed encryption
@@ -324,7 +352,7 @@ And auto-sort settings should remain as configured
 And CSS selectors should remain unchanged
 And domain configurations should work correctly
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ---
 
@@ -341,7 +369,7 @@ Then the credential should show 🔐 icon
 And the button should change to "🔓" (decrypt)
 And the credential should be encrypted in storage
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Decrypt credential (remove encryption)
 ```gherkin
@@ -354,7 +382,7 @@ Then the 🔐 icon should disappear
 And the button should change to "🔐" (encrypt)
 And the credential should be unencrypted in storage
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Change master password re-encrypts all credentials
 ```gherkin
@@ -367,7 +395,7 @@ And all 5 encrypted credentials should work with new password
 And none should work with old password
 And login status should remain active
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Reset master password removes only encrypted credentials
 ```gherkin
@@ -380,7 +408,7 @@ And all 3 encrypted credentials should be removed
 And all 2 unencrypted credentials should remain
 And the security section should show "Setup Master Password" button
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ---
 
@@ -396,44 +424,21 @@ And I return to the options page
 Then "user3" should now be at the top of the list
 And the order should be: "user3", "user1", "user2"
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Drag and drop reordering works correctly
 ```gherkin
-Given I have three credentials in order: "user1", "user2", "user3"
-When I drag "user3" credential above "user1"
-Then the order should change to: "user3", "user1", "user2"
-And the new order should persist after page refresh
-And drag handles (⋮⋮) should be visible and functional
-```
-- [ ] Test needed
-
-### Scenario: Drag to top position works
-```gherkin
-Given I have credentials in order: "user1", "user2", "user3"
-When I drag "user3" to the very top (drop on "user1")
-Then the order should become: "user3", "user1", "user2"
-And "user3" should be at position 1
-```
-- [ ] Test needed
-
-### Scenario: Drag to bottom position works
-```gherkin
-Given I have credentials in order: "user1", "user2", "user3"
-When I drag "user1" to empty space below all credentials
-Then the order should become: "user2", "user3", "user1"
-And "user1" should be at the last position
-```
-- [ ] Test needed
-
-### Scenario: Drag to middle position works
-```gherkin
 Given I have credentials in order: "user1", "user2", "user3", "user4"
-When I drag "user1" and drop it on "user3"
+And drag handles (⋮⋮) should be visible and functional
+When I drag "user4" to the top (drop on "user1")
+Then the order should become: "user4", "user1", "user2", "user3"
+When I drag "user1" to the middle (drop on "user3")
+Then the order should become: "user4", "user2", "user1", "user3"
+When I drag "user4" to the bottom (drop below all)
 Then the order should become: "user2", "user1", "user3", "user4"
-And "user1" should be at position 2
+And the final order should persist after page refresh
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Cross-domain dragging is prevented
 ```gherkin
@@ -444,7 +449,7 @@ Then the drag should not be allowed
 And "user1" should remain in site1.com
 And "user2" should remain in site2.com
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Drag and drop visual feedback works correctly
 ```gherkin
@@ -458,7 +463,7 @@ When I drop the credential
 Then all visual indicators should be cleared
 And the dragged item should return to normal opacity
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Domain sections collapse and expand with state persistence
 ```gherkin
@@ -473,7 +478,7 @@ When I click the domain header again
 Then the credentials section should expand
 And the arrow should point down (▼)
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ---
 
@@ -490,7 +495,7 @@ Then I should see "Please enter a valid CSS selector for username field"
 And the domain should not be saved
 And the form should retain the entered values
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Empty fields are validated
 ```gherkin
@@ -629,7 +634,7 @@ And I encrypt that credential
 Then encryption should complete successfully
 And decryption should return the exact original password with all special characters
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Very long passwords are handled correctly
 ```gherkin

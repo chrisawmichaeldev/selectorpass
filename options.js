@@ -147,7 +147,7 @@ function migrateCredentials(domains) {
  * @returns {number} Index of credential or -1 if not found
  */
 function findCredentialIndex(credentials, credentialId) {
-  console.log('SelectorPass: findCredentialIndex searching for:', credentialId, 'in:', credentials.map(c => c.id));
+
   
   // Try to find by ID first (new method)
   let index = credentials.findIndex(cred => cred.id === credentialId);
@@ -230,8 +230,6 @@ function setupEventListeners() {
     const securityHeader = document.getElementById('securityHeader');
     if (securityHeader) {
       securityHeader.addEventListener('click', toggleSecuritySection);
-    } else {
-      console.error('Security header not found');
     }
     
     const manageDomainsHeader = document.getElementById('manageDomainsHeader');
@@ -308,13 +306,11 @@ async function toggleManageDomainsSection() {
   try {
     const header = document.getElementById('manageDomainsHeader');
     if (!header) {
-      console.error('SelectorPass: Manage domains header not found');
       return;
     }
     
     const section = header.closest('.section');
     if (!section) {
-      console.error('SelectorPass: Manage domains section not found');
       return;
     }
     
@@ -323,7 +319,7 @@ async function toggleManageDomainsSection() {
     const isExpanded = section.classList.contains('expanded');
     await chrome.storage.local.set({ manageDomainsExpanded: isExpanded });
   } catch (error) {
-    console.error('SelectorPass: Error toggling manage domains section:', error);
+    // Silent error handling
   }
 }
 
@@ -338,8 +334,11 @@ async function restoreAddDomainState() {
     const manageDomainsExpanded = result.manageDomainsExpanded !== false;
     
     const addDomainSection = document.getElementById('addDomainHeader')?.closest('.section');
-    if (addDomainExpanded && addDomainSection) {
-      addDomainSection.classList.add('expanded');
+    if (addDomainSection) {
+      addDomainSection.classList.add('collapsible');
+      if (addDomainExpanded) {
+        addDomainSection.classList.add('expanded');
+      }
     }
     
     const securitySection = document.getElementById('securityHeader')?.closest('.section');
@@ -354,7 +353,7 @@ async function restoreAddDomainState() {
       manageDomainsSection.classList.remove('expanded');
     }
   } catch (error) {
-    console.error('SelectorPass: Error restoring domain state:', error);
+    // Silent error handling
   }
 }
 
@@ -365,7 +364,6 @@ async function restoreAddDomainState() {
 async function toggleDomainSection(domain) {
   try {
     if (!domain) {
-      console.error('SelectorPass: Domain parameter is required');
       return;
     }
     
@@ -382,7 +380,7 @@ async function toggleDomainSection(domain) {
       await chrome.storage.local.set({ domainStates });
     }
   } catch (error) {
-    console.error('SelectorPass: Error toggling domain section:', error);
+    // Silent error handling
   }
 }
 
@@ -409,11 +407,11 @@ async function restoreDomainStates() {
           domainItem.classList.add('expanded');
         }
       } catch (error) {
-        console.error('SelectorPass: Error restoring state for domain item:', error);
+        // Silent error handling
       }
     });
   } catch (error) {
-    console.error('SelectorPass: Error restoring domain states:', error);
+    // Silent error handling
   }
 }
 
@@ -483,7 +481,7 @@ function handleButtonClick(event) {
       }
     }
   } catch (error) {
-    console.error('SelectorPass: Error handling button click:', error);
+    // Silent error handling
   }
 }
 
@@ -540,7 +538,6 @@ async function saveDomain() {
     const passwordInput = document.getElementById('passwordSelector');
     
     if (!domainInput || !usernameInput || !passwordInput) {
-      console.error('SelectorPass: Required form elements not found');
       showConfirmDialog('Form elements not found. Please refresh the page.', () => {});
       return;
     }
@@ -587,7 +584,6 @@ async function saveDomain() {
     
     await loadAndDisplayDomains();
   } catch (error) {
-    console.error('SelectorPass: Error saving domain:', error);
     showConfirmDialog('Error saving domain. Please try again.', () => {});
   }
 }
@@ -599,7 +595,7 @@ async function loadAndDisplayDomains() {
     const domains = await loadData();
     await displayDomains(domains);
   } catch (error) {
-    console.error('SelectorPass: Error loading and displaying domains:', error);
+    // Silent error handling
   }
 }
 
@@ -607,7 +603,6 @@ async function displayDomains(domains) {
   try {
     const container = document.getElementById('domainsList');
     if (!container) {
-      console.error('SelectorPass: Domains list container not found');
       return;
     }
     
@@ -618,7 +613,7 @@ async function displayDomains(domains) {
         const domainDiv = createDomainElement(domain, config);
         container.appendChild(domainDiv);
       } catch (error) {
-        console.error(`SelectorPass: Error creating domain element for ${domain}:`, error);
+        // Silent error handling
       }
     });
     
@@ -631,7 +626,7 @@ async function displayDomains(domains) {
     // Restore domain collapse states
     await restoreDomainStates();
   } catch (error) {
-    console.error('SelectorPass: Error displaying domains:', error);
+    // Silent error handling
   }
 }
 
@@ -956,7 +951,6 @@ function createCredentialEditForm(domain, cred, index) {
         passwordInput.placeholder = 'Password (encrypted - enter new to change)';
       }
     }).catch((error) => {
-      console.error('SelectorPass: Error decrypting for edit:', error);
       passwordInput.value = '';
       passwordInput.placeholder = 'Password (encrypted - enter new to change)';
     });
@@ -1127,7 +1121,6 @@ async function addCredential(domain) {
   const passwordInput = document.getElementById(`password-${domain}`);
   
   if (!usernameInput || !passwordInput) {
-    console.error('SelectorPass: Credential input fields not found');
     return;
   }
   
@@ -1149,7 +1142,6 @@ async function addCredential(domain) {
     const domains = await loadData();
     
     if (!domains[domain]) {
-      console.error('SelectorPass: Domain configuration not found');
       return;
     }
     
@@ -1208,10 +1200,10 @@ async function addCredential(domain) {
       encryptCheckbox.checked = false;
     }
     
-    await loadAndDisplayDomains();
+    // Add just this credential item instead of full page reload
+    addCredentialItem(domain, credentialToSave);
     await updateSecurityUI();
   } catch (error) {
-    console.error('SelectorPass: Error adding credential:', error);
     showConfirmDialog('Error adding credential. Please try again.', () => {});
   }
 }
@@ -1613,7 +1605,9 @@ async function deleteCredential(domain, credentialId) {
         try {
           domains[domain].credentials.splice(index, 1);
           await saveData(domains);
-          await loadAndDisplayDomains();
+          
+          // Remove just this credential item instead of full page reload
+          removeCredentialItem(domain, credentialId);
         } catch (error) {
           console.error('SelectorPass: Error deleting credential:', error);
           showConfirmDialog('Error deleting credential. Please try again.', () => {});
@@ -1878,7 +1872,9 @@ async function saveCredential(domain, credentialId) {
     domains[domain].credentials[index] = credentialToSave;
     
     await saveData(domains);
-    await loadAndDisplayDomains();
+    
+    // Update just this credential item instead of full page reload
+    updateCredentialItem(domain, credentialId, credentialToSave);
   } catch (error) {
     console.error('SelectorPass: Error saving credential:', error);
     showConfirmDialog('Error saving credential. Please try again.', () => {});
@@ -2011,7 +2007,7 @@ function setupDragAndDrop(container) {
     if (!draggedItem) return;
     
     const dropTarget = e.target.closest('.credential-item');
-    const credentialsContainer = container.querySelector(`#credentials-${draggedDomain}`);
+    const credentialsContainer = container.querySelector(`[id="credentials-${draggedDomain}"]`);
     
     if (!credentialsContainer) return;
     
@@ -2022,7 +2018,6 @@ function setupDragAndDrop(container) {
     if (dropTarget && dropTarget.dataset.domain === draggedDomain) {
       toIndex = allItems.indexOf(dropTarget);
     } else {
-      // Dropped outside items - put at end
       toIndex = allItems.length;
     }
     
@@ -2039,7 +2034,6 @@ async function reorderCredentials(domain, fromIndex, toIndex) {
     
     if (!credentials || fromIndex < 0 || fromIndex >= credentials.length) return;
     
-    // Clamp toIndex to valid range
     toIndex = Math.max(0, Math.min(toIndex, credentials.length));
     
     const [movedItem] = credentials.splice(fromIndex, 1);
@@ -2047,7 +2041,16 @@ async function reorderCredentials(domain, fromIndex, toIndex) {
     credentials.splice(adjustedToIndex, 0, movedItem);
     
     await saveData(domains);
-    await loadAndDisplayDomains();
+    
+    // Update just the credentials container instead of full reload
+    const credentialsContainer = document.querySelector(`[id="credentials-${domain}"]`);
+    if (credentialsContainer) {
+      credentialsContainer.replaceChildren();
+      credentials.forEach((cred, index) => {
+        const credItem = createCredentialItem(domain, cred, index);
+        credentialsContainer.appendChild(credItem);
+      });
+    }
   } catch (error) {
     console.error('SelectorPass: Error reordering credentials:', error);
   }
@@ -2138,10 +2141,7 @@ function setupSecurityEventListeners() {
     
 
     
-    const encryptAllBtn = document.getElementById('encryptAllBtn');
-    if (encryptAllBtn) {
-      encryptAllBtn.addEventListener('click', handleEncryptAll);
-    }
+
     
 
   } catch (error) {
@@ -2162,7 +2162,7 @@ async function updateSecurityUI() {
     const statusText = document.getElementById('statusText');
     const masterPasswordSection = document.getElementById('masterPasswordSection');
     const unlockSection = document.getElementById('unlockSection');
-    const encryptedSection = document.getElementById('encryptedSection');
+
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     
@@ -2181,7 +2181,7 @@ async function updateSecurityUI() {
     if (settings.masterPasswordSet) {
       if (setupSection) setupSection.style.display = 'none';
       if (existingSection) existingSection.style.display = 'block';
-      if (encryptedSection) encryptedSection.style.display = 'block';
+
       
       // Show login/logout buttons based on login state
       if (isLoggedIn) {
@@ -2194,7 +2194,7 @@ async function updateSecurityUI() {
     } else {
       if (setupSection) setupSection.style.display = 'block';
       if (existingSection) existingSection.style.display = 'none';
-      if (encryptedSection) encryptedSection.style.display = 'none';
+
       if (loginBtn) loginBtn.style.display = 'none';
       if (logoutBtn) logoutBtn.style.display = 'none';
     }
@@ -2268,34 +2268,7 @@ async function handleSetMasterPassword() {
 
 
 
-/**
- * Handle encrypt all credentials
- */
-async function handleEncryptAll() {
-  try {
-    if (!await isMasterPasswordSet()) {
-      showAlertDialog('Master password not available. Please unlock first.');
-      return;
-    }
-    
-    showConfirmDialog(
-      'Encrypt all existing credentials? This cannot be undone.',
-      async () => {
-        try {
-          await encryptAllCredentials(masterKey);
-          await updateSecurityUI();
-          await loadAndDisplayDomains();
-          showAlertDialog('All credentials encrypted successfully!');
-        } catch (error) {
-          console.error('SelectorPass: Error encrypting all credentials:', error);
-          showAlertDialog('Error encrypting credentials. Please try again.');
-        }
-      }
-    );
-  } catch (error) {
-    console.error('SelectorPass: Error handling encrypt all:', error);
-  }
-}
+
 
 /**
  * Re-encrypt all credentials with new master password
@@ -2592,7 +2565,9 @@ async function encryptSingleCredential(domain, credentialId) {
     domains[domain].credentials[index] = encryptedCredential;
     
     await saveData(domains);
-    await loadAndDisplayDomains();
+    
+    // Update just this credential item instead of full page reload
+    updateCredentialItem(domain, credentialId, encryptedCredential);
     await updateSecurityUI();
   } catch (error) {
     console.error('SelectorPass: Error encrypting credential:', error);
@@ -2631,7 +2606,9 @@ async function decryptSingleCredential(domain, credentialId) {
     domains[domain].credentials[index] = decryptedCredential;
     
     await saveData(domains);
-    await loadAndDisplayDomains();
+    
+    // Update just this credential item instead of full page reload
+    updateCredentialItem(domain, credentialId, decryptedCredential);
     await updateSecurityUI();
   } catch (error) {
     console.error('SelectorPass: Error decrypting credential:', error);
@@ -2733,15 +2710,107 @@ async function handleLogout() {
 }
 
 /**
+ * Update a single credential item without full page reload
+ * @param {string} domain - Domain name
+ * @param {string} credentialId - Credential ID
+ * @param {Object} updatedCredential - Updated credential data
+ */
+function updateCredentialItem(domain, credentialId, updatedCredential) {
+  try {
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
+    if (!credentialItem) return;
+    
+    const credentialsContainer = credentialItem.parentElement;
+    const index = Array.from(credentialsContainer.children).indexOf(credentialItem);
+    
+    // Create new credential item
+    const newCredentialItem = createCredentialItem(domain, updatedCredential, index);
+    
+    // Replace old item with new one
+    credentialsContainer.replaceChild(newCredentialItem, credentialItem);
+  } catch (error) {
+    console.error('SelectorPass: Error updating credential item:', error);
+  }
+}
+
+/**
+ * Remove a single credential item without full page reload
+ * @param {string} domain - Domain name
+ * @param {string} credentialId - Credential ID to remove
+ */
+function removeCredentialItem(domain, credentialId) {
+  try {
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
+    if (credentialItem) {
+      credentialItem.remove();
+      
+      // Update credentials count in title
+      const credentialsSection = document.querySelector(`#credentials-${domain}`)?.closest('.credentials-section');
+      const title = credentialsSection?.querySelector('h4');
+      if (title) {
+        const currentCount = credentialsSection.querySelectorAll('.credential-item').length;
+        title.textContent = `Credentials (${currentCount})`;
+      }
+    }
+  } catch (error) {
+    console.error('SelectorPass: Error removing credential item:', error);
+  }
+}
+
+/**
+ * Add a single credential item without full page reload
+ * @param {string} domain - Domain name
+ * @param {Object} newCredential - New credential data
+ */
+function addCredentialItem(domain, newCredential) {
+  try {
+    const credentialsContainer = document.querySelector(`#credentials-${domain}`);
+    if (!credentialsContainer) return;
+    
+    const index = credentialsContainer.children.length;
+    const newCredentialItem = createCredentialItem(domain, newCredential, index);
+    
+    credentialsContainer.appendChild(newCredentialItem);
+    
+    // Update credentials count in title
+    const credentialsSection = credentialsContainer.closest('.credentials-section');
+    const title = credentialsSection?.querySelector('h4');
+    if (title) {
+      const currentCount = credentialsContainer.children.length;
+      title.textContent = `Credentials (${currentCount})`;
+    }
+  } catch (error) {
+    console.error('SelectorPass: Error adding credential item:', error);
+  }
+}
+
+
+
+/**
  * Setup connection to background script for login status updates
  */
 function setupLoginStatusConnection() {
-  const port = chrome.runtime.connect({ name: 'loginStatus' });
-  port.onMessage.addListener(message => {
-    if (message.action === 'loginStatusChanged') {
-      updateSecurityUI();
-    }
-  });
+  try {
+    const port = chrome.runtime.connect({ name: 'loginStatus' });
+    
+    port.onMessage.addListener(message => {
+      if (message.action === 'loginStatusChanged') {
+        updateSecurityUI();
+      }
+    });
+    
+    port.onDisconnect.addListener(() => {
+
+      // Attempt to reconnect after a short delay
+      setTimeout(setupLoginStatusConnection, 1000);
+    });
+    
+
+  } catch (error) {
+
+    // Retry connection after delay
+    setTimeout(setupLoginStatusConnection, 2000);
+  }
 }
 
 })();

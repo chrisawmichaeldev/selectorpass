@@ -89,7 +89,7 @@ async function setMasterPassword(password, duration = 'browser') {
       duration 
     });
   } catch (error) {
-    console.error('Failed to set master password:', error);
+    // Silent error handling
   }
 }
 
@@ -100,7 +100,7 @@ async function clearMasterPassword() {
   try {
     await chrome.runtime.sendMessage({ action: 'clearMasterPassword' });
   } catch (error) {
-    console.error('Failed to clear master password:', error);
+    // Silent error handling
   }
 }
 
