@@ -145,10 +145,10 @@ async function encryptCredential(credential) {
     throw new Error('Master password not set');
   }
   
-  // Only encrypt the password, keep username in plain text
+  // Only encrypt the password, preserve all other fields
   const encryptedPassword = await encryptData(credential.password, masterKey);
   return {
-    username: credential.username,
+    ...credential,
     password: encryptedPassword,
     encrypted: true
   };
@@ -165,11 +165,12 @@ async function decryptCredential(encryptedCredential) {
     throw new Error('Master password not set');
   }
   
-  // Decrypt only the password, username is already in plain text
+  // Decrypt only the password, preserve all other fields
   const decryptedPassword = await decryptData(encryptedCredential.password, masterKey);
   return {
-    username: encryptedCredential.username,
-    password: decryptedPassword
+    ...encryptedCredential,
+    password: decryptedPassword,
+    encrypted: false
   };
 }
 
@@ -180,11 +181,12 @@ async function decryptCredential(encryptedCredential) {
  * @returns {Promise<Object>} Decrypted credential
  */
 async function decryptCredentialDirectly(encryptedCredential, masterPassword) {
-  // Decrypt only the password, username is already in plain text
+  // Decrypt only the password, preserve all other fields
   const decryptedPassword = await decryptData(encryptedCredential.password, masterPassword);
   return {
-    username: encryptedCredential.username,
-    password: decryptedPassword
+    ...encryptedCredential,
+    password: decryptedPassword,
+    encrypted: false
   };
 }
 

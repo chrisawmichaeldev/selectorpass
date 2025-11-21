@@ -19,7 +19,7 @@ Then the popup should open
 And I should see "No configuration found for this domain." message
 And I should see "Settings" button
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Basic domain configuration and credential filling
 ```gherkin
@@ -38,7 +38,7 @@ Then the username field should contain "demouser"
 And the password field should contain "demopass"
 And the popup should close
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ---
 
@@ -54,7 +54,7 @@ When I am logged in
 And I open the popup
 Then I should see 🔓 icon in the status area
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Popup shows credentials in correct order (auto-sort enabled)
 ```gherkin
@@ -64,7 +64,7 @@ When I use "user3" credential to fill a form
 And I reopen the popup
 Then credentials should be in order: "user3", "user1", "user2"
 ```
-- [ ] Test needed
+- [x] Test needed
 
 ### Scenario: Popup shows credentials in original order (auto-sort disabled)
 ```gherkin
@@ -265,6 +265,34 @@ And all functionality should work normally
 ```
 - [ ] Test needed
 
+**Manual Setup for Legacy Data Testing:**
+1. Open Chrome DevTools (F12)
+2. Go to Application tab → Storage → Local Storage → chrome-extension://[extension-id]
+3. Add key `domains` with this legacy data (no credential IDs):
+```json
+{
+  "example.com": {
+    "usernameSelector": "#username",
+    "passwordSelector": "#password", 
+    "autoSortRecent": true,
+    "credentials": [
+      {"username": "legacy_user1", "password": "pass1"},
+      {"username": "legacy_user2", "password": "pass2", "encrypted": true, "password": {"encrypted": [1,2,3], "salt": [4,5,6], "iv": [7,8,9]}}
+    ]
+  },
+  "test.com": {
+    "usernameSelector": ".user-input",
+    "passwordSelector": ".pass-input",
+    "autoSortRecent": false,
+    "credentials": [
+      {"username": "old_user", "password": "oldpass"}
+    ]
+  }
+}
+```
+4. Refresh the extension options page
+5. Verify all credentials get IDs and work correctly
+
 ### Scenario: Migration handles mixed encrypted/unencrypted credentials
 ```gherkin
 Given I have data from previous version with both encrypted and unencrypted credentials
@@ -275,6 +303,16 @@ And I should be able to decrypt encrypted credentials with my existing master pa
 And migration should only run once (migrated flag set)
 ```
 - [ ] Test needed
+
+**Manual Setup for Mixed Legacy Data:**
+1. Use Chrome DevTools to set legacy data with mixed encryption
+2. Also add security settings: `securitySettings` key with value:
+```json
+{"masterPasswordSet": true, "masterPasswordHash": "your_hash_here", "pbkdf2Iterations": 100000}
+```
+3. Test that encrypted credentials require master password
+4. Test that unencrypted credentials work immediately
+5. Verify `migrated: true` flag is set after first load
 
 ### Scenario: Migration preserves domain settings
 ```gherkin
@@ -367,6 +405,58 @@ When I drag "user3" credential above "user1"
 Then the order should change to: "user3", "user1", "user2"
 And the new order should persist after page refresh
 And drag handles (⋮⋮) should be visible and functional
+```
+- [ ] Test needed
+
+### Scenario: Drag to top position works
+```gherkin
+Given I have credentials in order: "user1", "user2", "user3"
+When I drag "user3" to the very top (drop on "user1")
+Then the order should become: "user3", "user1", "user2"
+And "user3" should be at position 1
+```
+- [ ] Test needed
+
+### Scenario: Drag to bottom position works
+```gherkin
+Given I have credentials in order: "user1", "user2", "user3"
+When I drag "user1" to empty space below all credentials
+Then the order should become: "user2", "user3", "user1"
+And "user1" should be at the last position
+```
+- [ ] Test needed
+
+### Scenario: Drag to middle position works
+```gherkin
+Given I have credentials in order: "user1", "user2", "user3", "user4"
+When I drag "user1" and drop it on "user3"
+Then the order should become: "user2", "user1", "user3", "user4"
+And "user1" should be at position 2
+```
+- [ ] Test needed
+
+### Scenario: Cross-domain dragging is prevented
+```gherkin
+Given I have domain "site1.com" with credential "user1"
+And I have domain "site2.com" with credential "user2"
+When I try to drag "user1" from site1.com to site2.com credentials area
+Then the drag should not be allowed
+And "user1" should remain in site1.com
+And "user2" should remain in site2.com
+```
+- [ ] Test needed
+
+### Scenario: Drag and drop visual feedback works correctly
+```gherkin
+Given I have multiple credentials in a domain
+When I start dragging a credential
+Then the dragged item should become semi-transparent (opacity 0.5)
+And drag handles should be visible
+When I hover over another credential while dragging
+Then a blue border should appear above the target credential
+When I drop the credential
+Then all visual indicators should be cleared
+And the dragged item should return to normal opacity
 ```
 - [ ] Test needed
 

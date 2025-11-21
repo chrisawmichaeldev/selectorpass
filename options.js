@@ -143,14 +143,16 @@ function migrateCredentials(domains) {
 /**
  * Find credential index by ID with fallback to array index
  * @param {Array} credentials - Array of credentials
- * @param {string} credentialId - Credential ID or index
+ * @param {string} credentialId - Credential ID or legacy index
  * @returns {number} Index of credential or -1 if not found
  */
 function findCredentialIndex(credentials, credentialId) {
+  console.log('SelectorPass: findCredentialIndex searching for:', credentialId, 'in:', credentials.map(c => c.id));
+  
   // Try to find by ID first (new method)
   let index = credentials.findIndex(cred => cred.id === credentialId);
   
-  // Fallback to array index (old method) if no ID found
+  // Fallback to array index (legacy data) if no ID found
   if (index === -1 && !isNaN(credentialId)) {
     index = parseInt(credentialId);
     if (index >= 0 && index < credentials.length) {
@@ -170,9 +172,20 @@ async function loadData() {
     const result = await chrome.storage.local.get(['domains', 'migrated']);
     let domains = result.domains || {};
     
-    // Only migrate once for existing installations
-    if (!result.migrated && Object.keys(domains).length > 0) {
-      domains = migrateCredentials(domains);
+    // Always ensure all credentials have IDs (handles both migration and data integrity)
+    let needsSave = false;
+    Object.entries(domains).forEach(([domain, config]) => {
+      if (config.credentials) {
+        config.credentials.forEach((cred, index) => {
+          if (!cred.id) {
+            cred.id = generateCredentialId(cred.username || 'user', index);
+            needsSave = true;
+          }
+        });
+      }
+    });
+    
+    if (needsSave) {
       await chrome.storage.local.set({ domains, migrated: true });
     }
     
@@ -429,17 +442,17 @@ async function restoreDomainStates() {
  */
 const actionHandlers = new Map([
   ['delete-domain', domain => deleteDomain(domain)],
-  ['delete-credential', (domain, button) => deleteCredential(domain, button.dataset.credentialId || button.dataset.index)],
+  ['delete-credential', (domain, button) => deleteCredential(domain, button.dataset.credentialId)],
   ['add-credential', domain => addCredential(domain)],
   ['edit-domain', domain => editDomain(domain)],
   ['save-domain', domain => saveDomainEdit(domain)],
   ['cancel-edit', domain => cancelDomainEdit(domain)],
-  ['edit-credential', (domain, button) => editCredential(domain, button.dataset.credentialId || button.dataset.index)],
-  ['save-credential', (domain, button) => saveCredential(domain, button.dataset.credentialId || button.dataset.index)],
-  ['cancel-credential', (domain, button) => cancelCredential(domain, button.dataset.credentialId || button.dataset.index)],
-  ['toggle-password', (domain, button) => togglePassword(domain, button.dataset.credentialId || button.dataset.index)],
-  ['encrypt-credential', (domain, button) => encryptSingleCredential(domain, button.dataset.credentialId || button.dataset.index)],
-  ['decrypt-credential', (domain, button) => decryptSingleCredential(domain, button.dataset.credentialId || button.dataset.index)]
+  ['edit-credential', (domain, button) => editCredential(domain, button.dataset.credentialId)],
+  ['save-credential', (domain, button) => saveCredential(domain, button.dataset.credentialId)],
+  ['cancel-credential', (domain, button) => cancelCredential(domain, button.dataset.credentialId)],
+  ['toggle-password', (domain, button) => togglePassword(domain, button.dataset.credentialId)],
+  ['encrypt-credential', (domain, button) => encryptSingleCredential(domain, button.dataset.credentialId)],
+  ['decrypt-credential', (domain, button) => decryptSingleCredential(domain, button.dataset.credentialId)]
 ]);
 
 /**
@@ -834,12 +847,16 @@ function createCredentialsSection(domain, config) {
 }
 
 function createCredentialItem(domain, cred, index) {
+  // Ensure credential has an ID
+  if (!cred.id) {
+    cred.id = `legacy_${index}`;
+  }
+  
   const item = document.createElement('div');
   item.className = 'credential-item';
   item.draggable = true;
   item.dataset.domain = domain;
-  item.dataset.index = index;
-  item.dataset.credentialId = cred.id || `legacy_${index}`;
+  item.dataset.credentialId = cred.id;
   
   // Display mode
   const display = document.createElement('div');
@@ -868,14 +885,14 @@ function createCredentialItem(domain, cred, index) {
   const buttons = document.createElement('div');
   buttons.className = 'credential-buttons';
   
-  const editBtn = createIconButton('✏️', 'Edit credential', 'credential-action-btn', { domain, index, action: 'edit-credential' });
+  const editBtn = createIconButton('✏️', 'Edit credential', 'credential-action-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'edit-credential' });
   
   // Add encrypt/remove encryption button based on current state
   const encryptBtn = cred.encrypted 
-    ? createIconButton('🔓', 'Remove encryption', 'credential-action-btn', { domain, index, action: 'decrypt-credential' })
-    : createIconButton('🔐', 'Encrypt credential', 'credential-action-btn', { domain, index, action: 'encrypt-credential' });
+    ? createIconButton('🔓', 'Remove encryption', 'credential-action-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'decrypt-credential' })
+    : createIconButton('🔐', 'Encrypt credential', 'credential-action-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'encrypt-credential' });
   
-  const deleteBtn = createIconButton('🗑️', 'Delete credential', 'credential-action-btn', { domain, index, action: 'delete-credential' });
+  const deleteBtn = createIconButton('🗑️', 'Delete credential', 'credential-action-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'delete-credential' });
   
   buttons.appendChild(editBtn);
   buttons.appendChild(encryptBtn);
@@ -956,7 +973,7 @@ function createCredentialEditForm(domain, cred, index) {
   showBtn.className = 'show-password-btn';
   showBtn.textContent = '👁️';
   showBtn.dataset.domain = domain;
-  showBtn.dataset.index = index;
+  showBtn.dataset.credentialId = cred.id || `legacy_${index}`;
   showBtn.dataset.action = 'toggle-password';
   
   passwordField.appendChild(passwordInput);
@@ -965,8 +982,8 @@ function createCredentialEditForm(domain, cred, index) {
   const buttons = document.createElement('div');
   buttons.className = 'credential-buttons';
   
-  const saveBtn = createButton('Save', 'save-btn', { domain, index, action: 'save-credential' });
-  const cancelBtn = createButton('Cancel', 'cancel-btn', { domain, index, action: 'cancel-credential' });
+  const saveBtn = createButton('Save', 'save-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'save-credential' });
+  const cancelBtn = createButton('Cancel', 'cancel-btn', { domain, credentialId: cred.id || `legacy_${index}`, action: 'cancel-credential' });
   
   buttons.appendChild(saveBtn);
   buttons.appendChild(cancelBtn);
@@ -1569,6 +1586,8 @@ function showConfirmationDialog(message) {
 
 async function deleteCredential(domain, credentialId) {
   try {
+    console.log('SelectorPass: deleteCredential called with:', { domain, credentialId, type: typeof credentialId });
+    
     const domains = await loadData();
     
     if (!domains[domain] || !domains[domain].credentials) {
@@ -1576,9 +1595,13 @@ async function deleteCredential(domain, credentialId) {
       return;
     }
     
+    console.log('SelectorPass: Available credentials:', domains[domain].credentials.map(c => ({ id: c.id, username: c.username })));
+    
     const index = findCredentialIndex(domains[domain].credentials, credentialId);
+    console.log('SelectorPass: findCredentialIndex returned:', index);
+    
     if (index === -1) {
-      console.error('SelectorPass: Credential not found');
+      console.error('SelectorPass: Credential not found - credentialId:', credentialId);
       return;
     }
     
@@ -1750,9 +1773,9 @@ function cancelDomainEdit(domain) {
   }
 }
 
-function editCredential(domain, index) {
+function editCredential(domain, credentialId) {
   try {
-    const credentialItem = document.querySelector(`[data-domain="${domain}"][data-index="${index}"]`)?.closest('.credential-item');
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
     if (!credentialItem) {
       console.error('SelectorPass: Credential item not found for editing');
       return;
@@ -1819,6 +1842,7 @@ async function saveCredential(domain, credentialId) {
     
     const originalCredential = domains[domain].credentials[index];
     let credentialToSave = {
+      id: originalCredential.id, // Preserve the credential ID
       username: newUsername.trim(),
       password: newPassword.trim()
     };
@@ -1861,9 +1885,9 @@ async function saveCredential(domain, credentialId) {
   }
 }
 
-function cancelCredential(domain, index) {
+function cancelCredential(domain, credentialId) {
   try {
-    const credentialItem = document.querySelector(`[data-domain="${domain}"][data-index="${index}"]`)?.closest('.credential-item');
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
     if (!credentialItem) {
       console.error('SelectorPass: Credential item not found for cancel');
       return;
@@ -1884,9 +1908,9 @@ function cancelCredential(domain, index) {
   }
 }
 
-async function togglePassword(domain, index) {
+async function togglePassword(domain, credentialId) {
   try {
-    const credentialItem = document.querySelector(`[data-domain="${domain}"][data-index="${index}"]`)?.closest('.credential-item');
+    const credentialItem = document.querySelector(`[data-credential-id="${credentialId}"]`)?.closest('.credential-item');
     if (!credentialItem) {
       console.error('SelectorPass: Credential item not found for password toggle');
       return;
@@ -1902,6 +1926,7 @@ async function togglePassword(domain, index) {
     
     // Check if this is an encrypted credential and we're logged out
     const domains = await loadData();
+    const index = findCredentialIndex(domains[domain]?.credentials || [], credentialId);
     const credential = domains[domain]?.credentials[index];
     
     if (credential?.encrypted && !passwordInput.value && passwordInput.type === 'password') {
@@ -1940,72 +1965,69 @@ async function togglePassword(domain, index) {
 
 function setupDragAndDrop(container) {
   let draggedItem = null;
-  let draggedIndex = null;
   let draggedDomain = null;
   
   container.addEventListener('dragstart', (e) => {
     const credentialItem = e.target.closest('.credential-item');
     if (credentialItem) {
       draggedItem = credentialItem;
-      draggedIndex = parseInt(credentialItem.dataset.index);
       draggedDomain = credentialItem.dataset.domain;
       credentialItem.style.opacity = '0.5';
-
     }
   });
   
-  container.addEventListener('dragend', (e) => {
-    const credentialItem = e.target.closest('.credential-item');
-    if (credentialItem) {
-      credentialItem.style.opacity = '1';
+  container.addEventListener('dragend', () => {
+    if (draggedItem) {
+      draggedItem.style.opacity = '1';
       draggedItem = null;
-      draggedIndex = null;
       draggedDomain = null;
     }
+    container.querySelectorAll('.credential-item').forEach(item => {
+      item.style.borderTop = '';
+    });
   });
   
   container.addEventListener('dragover', (e) => {
     e.preventDefault();
+    if (!draggedItem) return;
+    
+    container.querySelectorAll('.credential-item').forEach(item => {
+      item.style.borderTop = '';
+    });
+    
     const credentialItem = e.target.closest('.credential-item');
-    if (credentialItem && credentialItem !== draggedItem) {
+    if (credentialItem && credentialItem !== draggedItem && credentialItem.dataset.domain === draggedDomain) {
       credentialItem.style.borderTop = '2px solid #007bff';
-    }
-  });
-  
-  container.addEventListener('dragleave', (e) => {
-    const credentialItem = e.target.closest('.credential-item');
-    if (credentialItem) {
-      credentialItem.style.borderTop = '';
     }
   });
   
   container.addEventListener('drop', async (e) => {
     e.preventDefault();
     
-    // Clear all border indicators
     container.querySelectorAll('.credential-item').forEach(item => {
       item.style.borderTop = '';
     });
     
+    if (!draggedItem) return;
+    
     const dropTarget = e.target.closest('.credential-item');
-    if (!dropTarget || !draggedItem || dropTarget === draggedItem) {
-
-      return;
+    const credentialsContainer = container.querySelector(`#credentials-${draggedDomain}`);
+    
+    if (!credentialsContainer) return;
+    
+    const allItems = Array.from(credentialsContainer.querySelectorAll('.credential-item'));
+    const fromIndex = allItems.indexOf(draggedItem);
+    
+    let toIndex;
+    if (dropTarget && dropTarget.dataset.domain === draggedDomain) {
+      toIndex = allItems.indexOf(dropTarget);
+    } else {
+      // Dropped outside items - put at end
+      toIndex = allItems.length;
     }
     
-    const targetIndex = parseInt(dropTarget.dataset.index);
-    const targetDomain = dropTarget.dataset.domain;
-    
-    // Only allow reordering within the same domain
-    if (draggedDomain !== targetDomain) {
-
-      return;
-    }
-    
-
-    
-    if (draggedIndex !== targetIndex) {
-      await reorderCredentials(draggedDomain, draggedIndex, targetIndex);
+    if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+      await reorderCredentials(draggedDomain, fromIndex, toIndex);
     }
   });
 }
@@ -2013,24 +2035,16 @@ function setupDragAndDrop(container) {
 async function reorderCredentials(domain, fromIndex, toIndex) {
   try {
     const domains = await loadData();
+    const credentials = domains[domain]?.credentials;
     
-    if (!domains[domain] || !domains[domain].credentials) {
-      console.error('SelectorPass: Invalid domain for reordering');
-      return;
-    }
+    if (!credentials || fromIndex < 0 || fromIndex >= credentials.length) return;
     
-    const credentials = domains[domain].credentials;
+    // Clamp toIndex to valid range
+    toIndex = Math.max(0, Math.min(toIndex, credentials.length));
     
-    if (fromIndex < 0 || fromIndex >= credentials.length || toIndex < 0 || toIndex >= credentials.length) {
-      console.error('SelectorPass: Invalid indices for reordering');
-      return;
-    }
-    
-    // Remove item from original position
     const [movedItem] = credentials.splice(fromIndex, 1);
-    
-    // Insert at new position
-    credentials.splice(toIndex, 0, movedItem);
+    const adjustedToIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+    credentials.splice(adjustedToIndex, 0, movedItem);
     
     await saveData(domains);
     await loadAndDisplayDomains();
@@ -2532,7 +2546,7 @@ function setupTooltip(button) {
 /**
  * Encrypt a single credential
  */
-async function encryptSingleCredential(domain, index) {
+async function encryptSingleCredential(domain, credentialId) {
   try {
     const settings = await getSecuritySettings();
     if (!settings.masterPasswordSet) {
@@ -2566,6 +2580,7 @@ async function encryptSingleCredential(domain, index) {
     }
     
     const domains = await loadData();
+    const index = findCredentialIndex(domains[domain]?.credentials || [], credentialId);
     const credential = domains[domain]?.credentials[index];
     
     if (!credential || credential.encrypted) {
@@ -2588,7 +2603,7 @@ async function encryptSingleCredential(domain, index) {
 /**
  * Decrypt a single credential
  */
-async function decryptSingleCredential(domain, index) {
+async function decryptSingleCredential(domain, credentialId) {
   try {
     // Check if master password is available
     const isLoggedIn = await isMasterPasswordSet();
@@ -2604,6 +2619,7 @@ async function decryptSingleCredential(domain, index) {
     }
     
     const domains = await loadData();
+    const index = findCredentialIndex(domains[domain]?.credentials || [], credentialId);
     const credential = domains[domain]?.credentials[index];
     
     if (!credential || !credential.encrypted) {
